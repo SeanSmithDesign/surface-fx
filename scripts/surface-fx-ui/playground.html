@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>surface-fx playground</title>
+<style>
+  :root {
+    --bg: #101114;
+    --panel: #16181d;
+    --panel-raised: #1c1f26;
+    --border: rgba(255, 255, 255, 0.09);
+    --text: #e7e8ea;
+    --text-dim: #888e99;
+    --text-dimmer: #5b6169;
+    --accent: #f2b705;
+    --accent-dim: rgba(242, 183, 5, 0.16);
+    --danger: #ef6461;
+    --ok: #5ec98f;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  button, input, select {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  /* ── Header ─────────────────────────────────────────────────────────── */
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    flex: 0 0 auto;
+  }
+
+  header h1 {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0;
+    color: var(--text);
+  }
+
+  #status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-dim);
+    font-size: 11px;
+  }
+
+  #status .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--danger);
+    flex: 0 0 auto;
+  }
+  #status.connected .dot { background: var(--ok); }
+
+  #theme-toggle {
+    margin-left: auto;
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  #theme-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 5px 12px;
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 11px;
+  }
+  #theme-toggle button:last-child { border-right: none; }
+  #theme-toggle button:hover { color: var(--text); }
+  #theme-toggle button.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  #error-banner {
+    display: none;
+    padding: 8px 14px;
+    background: rgba(239, 100, 97, 0.12);
+    border-bottom: 1px solid var(--danger);
+    color: var(--danger);
+    font-size: 11px;
+    flex: 0 0 auto;
+  }
+  #error-banner.show { display: block; }
+
+  /* ── Body layout ────────────────────────────────────────────────────── */
+
+  #body {
+    flex: 1 1 auto;
+    display: flex;
+    min-height: 0;
+  }
+
+  #left-pane {
+    width: 380px;
+    flex: 0 0 380px;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    background: var(--panel);
+  }
+
+  #right-pane {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  #iframe-wrap {
+    flex: 1 1 auto;
+    min-height: 0;
+    background: #000;
+  }
+  #preview-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+  }
+
+  #changes-panel {
+    flex: 0 0 220px;
+    border-top: 1px solid var(--border);
+    background: var(--panel);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  #changes-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    flex: 0 0 auto;
+  }
+  #changes-header h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+    margin: 0;
+  }
+  #changes-count {
+    color: var(--accent);
+    font-size: 11px;
+  }
+  #copy-bake-btn {
+    margin-left: auto;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid rgba(242, 183, 5, 0.3);
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 11px;
+  }
+  #copy-bake-btn:hover { background: rgba(242, 183, 5, 0.26); }
+  #copy-bake-btn.copied { color: var(--ok); border-color: rgba(94, 201, 143, 0.4); background: rgba(94, 201, 143, 0.14); }
+
+  #changes-body {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    display: flex;
+    min-height: 0;
+  }
+
+  #changes-list {
+    flex: 1 1 50%;
+    overflow-y: auto;
+    padding: 6px 14px;
+  }
+  .change-row {
+    display: flex;
+    gap: 8px;
+    padding: 3px 0;
+    color: var(--text);
+    white-space: nowrap;
+  }
+  .change-row .k { color: var(--accent); }
+  .change-row .d { color: var(--text-dimmer); }
+  #changes-empty { color: var(--text-dimmer); padding: 6px 0; }
+
+  #bake-output {
+    flex: 1 1 50%;
+    margin: 0;
+    padding: 8px 14px;
+    border-left: 1px solid var(--border);
+    overflow: auto;
+    white-space: pre;
+    color: var(--text-dim);
+    font-size: 11px;
+  }
+
+  /* ── Param tree ─────────────────────────────────────────────────────── */
+
+  details.domain {
+    border-bottom: 1px solid var(--border);
+  }
+  details.domain > summary {
+    padding: 8px 14px;
+    cursor: pointer;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 11px;
+    color: var(--text-dim);
+    list-style: none;
+  }
+  details.domain > summary::-webkit-details-marker { display: none; }
+  details.domain > summary::before {
+    content: "▸";
+    display: inline-block;
+    width: 12px;
+    color: var(--text-dimmer);
+  }
+  details.domain[open] > summary::before { content: "▾"; }
+
+  details.group {
+    margin: 0 0 4px 12px;
+  }
+  details.group > summary {
+    padding: 4px 14px 4px 6px;
+    cursor: pointer;
+    color: var(--text-dimmer);
+    font-size: 10.5px;
+    list-style: none;
+    letter-spacing: 0.02em;
+  }
+  details.group > summary::-webkit-details-marker { display: none; }
+
+  .param-row {
+    padding: 6px 14px 8px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+  }
+  .param-row.modified { background: rgba(242, 183, 5, 0.05); }
+
+  .param-label-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .param-label {
+    color: var(--text);
+    cursor: help;
+  }
+  .param-key {
+    color: var(--text-dimmer);
+    font-size: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .modified-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex: 0 0 auto;
+    display: none;
+  }
+  .param-row.modified .modified-dot { display: inline-block; }
+  .readonly-tag {
+    margin-left: auto;
+    color: var(--text-dimmer);
+    font-size: 10px;
+    text-transform: uppercase;
+  }
+
+  .param-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .param-control input[type="range"] {
+    flex: 1 1 auto;
+    accent-color: var(--accent);
+    height: 14px;
+  }
+  .param-control input[type="number"] {
+    width: 64px;
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 5px;
+    color: var(--text);
+  }
+  .param-unit {
+    color: var(--text-dimmer);
+    font-size: 10px;
+    width: 20px;
+  }
+
+  .toggle {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 30px;
+    height: 16px;
+    border-radius: 8px;
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    position: relative;
+    cursor: pointer;
+  }
+  .toggle:checked { background: var(--accent-dim); border-color: var(--accent); }
+  .toggle::before {
+    content: "";
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--text-dimmer);
+    transition: left 0.1s ease;
+  }
+  .toggle:checked::before { left: 15px; background: var(--accent); }
+
+  .segmented {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .segmented button {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 3px 8px;
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+    font-size: 11px;
+  }
+  .segmented button:last-child { border-right: none; }
+  .segmented button.active { background: var(--accent-dim); color: var(--accent); }
+
+  .color-control { display: flex; align-items: center; gap: 6px; }
+  .color-control input[type="color"] {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: none;
+  }
+  .color-control input[type="text"] {
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 5px;
+    color: var(--text);
+    width: 110px;
+  }
+  .color-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    flex: 0 0 auto;
+  }
+
+  [disabled] { opacity: 0.5; cursor: not-allowed; }
+
+  #left-empty {
+    padding: 24px 14px;
+    color: var(--text-dimmer);
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>surface-fx playground</h1>
+    <div id="status"><span class="dot"></span><span id="status-text">connecting&hellip;</span></div>
+    <div id="theme-toggle">
+      <button data-theme="light" class="active">Light</button>
+      <button data-theme="dark">Dark</button>
+      <button data-theme="auto">Auto</button>
+    </div>
+  </header>
+  <div id="error-banner"></div>
+  <div id="body">
+    <div id="left-pane">
+      <div id="left-empty">loading schema&hellip;</div>
+    </div>
+    <div id="right-pane">
+      <div id="iframe-wrap">
+        <iframe id="preview-frame" title="live dev site preview"></iframe>
+      </div>
+      <div id="changes-panel">
+        <div id="changes-header">
+          <h2>Changes</h2>
+          <span id="changes-count">0</span>
+          <button id="copy-bake-btn">Copy bake block</button>
+        </div>
+        <div id="changes-body">
+          <div id="changes-list"><div id="changes-empty">no changes — all params at baked defaults</div></div>
+          <pre id="bake-output"># dial params to build a bake block</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var DEV_PORT = __DEV_PORT__;
+
+  var state = {
+    specs: [],
+    byKey: {},
+    params: {},
+    connected: false,
+    theme: "light",
+    editing: {}, // key -> true while a control is actively being dragged/typed
+  };
+
+  var rowElements = {}; // key -> { row, control-specific refs, spec }
+  var sendTimers = {}; // key -> timeout id, per-key debounce for POST /bridge set
+  var pendingCommits = {}; // key -> { value, expiresAt } — hold optimistic value until the
+                            // snapshot catches up (bridge drain + report debounce lag) or times out
+
+  // ── DOM refs ─────────────────────────────────────────────────────────
+
+  var statusEl = document.getElementById("status");
+  var statusTextEl = document.getElementById("status-text");
+  var errorBanner = document.getElementById("error-banner");
+  var leftPane = document.getElementById("left-pane");
+  var themeToggle = document.getElementById("theme-toggle");
+  var previewFrame = document.getElementById("preview-frame");
+  var changesList = document.getElementById("changes-list");
+  var changesCount = document.getElementById("changes-count");
+  var bakeOutput = document.getElementById("bake-output");
+  var copyBtn = document.getElementById("copy-bake-btn");
+
+  // ── Bridge calls (proxied through this server's own /bridge route —
+  // NEVER calls the bridge's `drain` action; only the iframe's own
+  // SurfaceFxBridge component drains queued writes) ───────────────────
+
+  function bridgeGet(action, extra) {
+    var url = new URL("/bridge", window.location.origin);
+    url.searchParams.set("action", action);
+    if (extra) {
+      Object.keys(extra).forEach(function (k) {
+        if (extra[k] !== undefined) url.searchParams.set(k, extra[k]);
+      });
+    }
+    return fetch(url).then(function (res) {
+      if (!res.ok) {
+        return res.json().catch(function () {
+          return { ok: false, error: "GET " + action + " failed: " + res.status };
+        }).then(function (body) {
+          throw new Error(body.error || "GET " + action + " failed: " + res.status);
+        });
+      }
+      return res.json();
+    });
+  }
+
+  function bridgeSet(key, value) {
+    return fetch("/bridge", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "set", key: key, value: value }),
+    }).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (body) {
+        if (!res.ok || body.ok === false) {
+          throw new Error(body.error || "set failed: " + res.status);
+        }
+        return body;
+      });
+    });
+  }
+
+  function showError(msg) {
+    errorBanner.textContent = msg;
+    errorBanner.classList.add("show");
+  }
+  function clearError() {
+    errorBanner.classList.remove("show");
+  }
+
+  // ── Theme helpers ────────────────────────────────────────────────────
+
+  function themeOfKey(key) {
+    var m = /@(light|dark)$/.exec(key);
+    return m ? m[1] : null;
+  }
+
+  function matchesTheme(key) {
+    if (state.theme === "auto") return true;
+    var t = themeOfKey(key);
+    return t === null || t === state.theme;
+  }
+
+  function iframeSrc() {
+    var appearance = state.theme === "auto" ? "auto" : state.theme;
+    return "http://localhost:" + DEV_PORT + "/?preview=1&appearance=" + appearance;
+  }
+
+  function reloadPreview() {
+    previewFrame.src = iframeSrc();
+  }
+
+  themeToggle.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-theme]");
+    if (!btn) return;
+    state.theme = btn.getAttribute("data-theme");
+    Array.prototype.forEach.call(themeToggle.querySelectorAll("button"), function (b) {
+      b.classList.toggle("active", b === btn);
+    });
+    reloadPreview();
+    renderParamTree();
+  });
+
+  // ── Value display helpers ────────────────────────────────────────────
+
+  function displayValue(spec) {
+    var v = state.params[spec.key];
+    return v !== undefined ? v : spec.default;
+  }
+
+  function isModified(spec) {
+    var v = state.params[spec.key];
+    return v !== undefined && v !== spec.default;
+  }
+
+  function fmt(v) {
+    if (typeof v === "number") return String(v);
+    if (typeof v === "boolean") return v ? "true" : "false";
+    return String(v);
+  }
+
+  // ── Sending writes (debounced per key; optimistic local update) ─────
+
+  var PENDING_COMMIT_TIMEOUT_MS = 4000; // bridge drain (~1000ms) + report debounce (~500ms), with slack
+
+  function queueSet(spec, value) {
+    state.params[spec.key] = value; // optimistic
+    updateRowDisplay(spec.key);
+    refreshChangesPanel();
+
+    if (sendTimers[spec.key]) clearTimeout(sendTimers[spec.key]);
+    sendTimers[spec.key] = setTimeout(function () {
+      bridgeSet(spec.key, value).then(function (result) {
+        clearError();
+        var committed = (result && result.clamped !== undefined) ? result.clamped : value;
+        // Hold this value against snapshot poll clobber until the snapshot actually
+        // reflects it (or the timeout elapses and we accept the snapshot as truth).
+        pendingCommits[spec.key] = { value: committed, expiresAt: Date.now() + PENDING_COMMIT_TIMEOUT_MS };
+        if (committed !== value) {
+          state.params[spec.key] = committed;
+          updateRowDisplay(spec.key);
+          refreshChangesPanel();
+        }
+      }).catch(function (err) {
+        showError(String(err.message || err));
+      });
+    }, 70);
+  }
+
+  // ── Param tree rendering ─────────────────────────────────────────────
+
+  function groupSpecs(specs) {
+    var domains = {};
+    specs.forEach(function (spec) {
+      if (!matchesTheme(spec.key)) return;
+      var domain = spec.group.split(".")[0];
+      domains[domain] = domains[domain] || {};
+      domains[domain][spec.group] = domains[domain][spec.group] || [];
+      domains[domain][spec.group].push(spec);
+    });
+    return domains;
+  }
+
+  function buildControl(spec) {
+    var control = document.createElement("div");
+    control.className = "param-control";
+    var refs = { spec: spec };
+
+    var writable = !!spec.agentWritable;
+    var value = displayValue(spec);
+
+    if (spec.kind === "number") {
+      var min = spec.min !== undefined ? spec.min : Math.min(0, value);
+      var max = spec.max !== undefined ? spec.max : Math.max(1, value);
+      var step = spec.step !== undefined ? spec.step : (max - min) / 100 || 1;
+
+      var range = document.createElement("input");
+      range.type = "range";
+      range.min = min;
+      range.max = max;
+      range.step = step;
+      range.value = value;
+      range.disabled = !writable;
+
+      var num = document.createElement("input");
+      num.type = "number";
+      num.min = min;
+      num.max = max;
+      num.step = step;
+      num.value = value;
+      num.disabled = !writable;
+
+      function commit(v) {
+        var n = Number(v);
+        if (!Number.isFinite(n)) return;
+        n = Math.max(min, Math.min(max, n));
+        range.value = n;
+        num.value = n;
+        queueSet(spec, n);
+      }
+
+      range.addEventListener("pointerdown", function () { state.editing[spec.key] = true; });
+      range.addEventListener("pointerup", function () { state.editing[spec.key] = false; });
+      range.addEventListener("input", function () { num.value = range.value; commit(range.value); });
+      num.addEventListener("focus", function () { state.editing[spec.key] = true; });
+      num.addEventListener("blur", function () {
+        state.editing[spec.key] = false;
+        commit(num.value);
+      });
+      num.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") { commit(num.value); num.blur(); }
+      });
+
+      control.appendChild(range);
+      control.appendChild(num);
+      if (spec.unit) {
+        var unit = document.createElement("span");
+        unit.className = "param-unit";
+        unit.textContent = spec.unit;
+        control.appendChild(unit);
+      }
+      refs.range = range;
+      refs.num = num;
+    } else if (spec.kind === "boolean") {
+      var toggle = document.createElement("input");
+      toggle.type = "checkbox";
+      toggle.className = "toggle";
+      toggle.checked = !!value;
+      toggle.disabled = !writable;
+      toggle.addEventListener("change", function () {
+        queueSet(spec, toggle.checked);
+      });
+      control.appendChild(toggle);
+      refs.toggle = toggle;
+    } else if (spec.kind === "enum") {
+      var seg = document.createElement("div");
+      seg.className = "segmented";
+      (spec.options || []).forEach(function (opt) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = opt;
+        b.classList.toggle("active", opt === value);
+        b.disabled = !writable;
+        b.addEventListener("click", function () {
+          Array.prototype.forEach.call(seg.querySelectorAll("button"), function (bb) {
+            bb.classList.toggle("active", bb === b);
+          });
+          queueSet(spec, opt);
+        });
+        seg.appendChild(b);
+      });
+      control.appendChild(seg);
+      refs.seg = seg;
+    } else {
+      // color
+      var wrap = document.createElement("div");
+      wrap.className = "color-control";
+      var isHex = /^#[0-9a-fA-F]{6}$/.test(String(value));
+      var swatch = document.createElement("div");
+      swatch.className = "color-swatch";
+      swatch.style.background = String(value);
+      var text = document.createElement("input");
+      text.type = "text";
+      text.value = String(value);
+      text.disabled = !writable;
+      text.addEventListener("change", function () {
+        swatch.style.background = text.value;
+        queueSet(spec, text.value);
+      });
+      wrap.appendChild(swatch);
+      wrap.appendChild(text);
+      if (isHex) {
+        var colorInput = document.createElement("input");
+        colorInput.type = "color";
+        colorInput.value = value;
+        colorInput.disabled = !writable;
+        colorInput.addEventListener("input", function () {
+          text.value = colorInput.value;
+          swatch.style.background = colorInput.value;
+          queueSet(spec, colorInput.value);
+        });
+        wrap.appendChild(colorInput);
+        refs.colorInput = colorInput;
+      }
+      control.appendChild(wrap);
+      refs.swatch = swatch;
+      refs.text = text;
+    }
+
+    return { control: control, refs: refs };
+  }
+
+  function renderParamTree() {
+    var domains = groupSpecs(state.specs);
+    var domainNames = Object.keys(domains).sort();
+
+    leftPane.innerHTML = "";
+    rowElements = {};
+
+    if (domainNames.length === 0) {
+      var empty = document.createElement("div");
+      empty.id = "left-empty";
+      empty.textContent = "no params match this theme filter";
+      leftPane.appendChild(empty);
+      return;
+    }
+
+    domainNames.forEach(function (domain) {
+      var groups = domains[domain];
+      var groupNames = Object.keys(groups).sort();
+      var count = groupNames.reduce(function (n, g) { return n + groups[g].length; }, 0);
+
+      var domainEl = document.createElement("details");
+      domainEl.className = "domain";
+      domainEl.open = true;
+      var domainSummary = document.createElement("summary");
+      domainSummary.textContent = domain + " (" + count + ")";
+      domainEl.appendChild(domainSummary);
+
+      groupNames.forEach(function (groupKey) {
+        var specs = groups[groupKey];
+        var groupEl = document.createElement("details");
+        groupEl.className = "group";
+        groupEl.open = true;
+        var groupSummary = document.createElement("summary");
+        groupSummary.textContent = groupKey;
+        groupEl.appendChild(groupSummary);
+
+        specs.forEach(function (spec) {
+          var row = document.createElement("div");
+          row.className = "param-row";
+          row.dataset.key = spec.key;
+          row.title = spec.describe;
+
+          var labelRow = document.createElement("div");
+          labelRow.className = "param-label-row";
+
+          var dot = document.createElement("span");
+          dot.className = "modified-dot";
+          labelRow.appendChild(dot);
+
+          var label = document.createElement("span");
+          label.className = "param-label";
+          label.textContent = spec.label;
+          labelRow.appendChild(label);
+
+          if (!spec.agentWritable) {
+            var tag = document.createElement("span");
+            tag.className = "readonly-tag";
+            tag.textContent = "read-only";
+            labelRow.appendChild(tag);
+          }
+
+          row.appendChild(labelRow);
+
+          var keyLine = document.createElement("div");
+          keyLine.className = "param-key";
+          keyLine.textContent = spec.key;
+          row.appendChild(keyLine);
+
+          var built = buildControl(spec);
+          row.appendChild(built.control);
+
+          groupEl.appendChild(row);
+
+          built.refs.row = row;
+          built.refs.dot = dot;
+          rowElements[spec.key] = built.refs;
+          updateRowDisplay(spec.key);
+        });
+
+        domainEl.appendChild(groupEl);
+      });
+
+      leftPane.appendChild(domainEl);
+    });
+  }
+
+  function updateRowDisplay(key) {
+    var refs = rowElements[key];
+    if (!refs) return;
+    var spec = refs.spec;
+    if (state.editing[key]) return; // don't clobber an in-progress drag/type
+
+    var value = displayValue(spec);
+    var modified = isModified(spec);
+    refs.row.classList.toggle("modified", modified);
+
+    if (spec.kind === "number") {
+      refs.range.value = value;
+      refs.num.value = value;
+    } else if (spec.kind === "boolean") {
+      refs.toggle.checked = !!value;
+    } else if (spec.kind === "enum") {
+      Array.prototype.forEach.call(refs.seg.querySelectorAll("button"), function (b) {
+        b.classList.toggle("active", b.textContent === value);
+      });
+    } else if (refs.text) {
+      refs.text.value = String(value);
+      refs.swatch.style.background = String(value);
+      if (refs.colorInput && /^#[0-9a-fA-F]{6}$/.test(String(value))) {
+        refs.colorInput.value = value;
+      }
+    }
+  }
+
+  function refreshAllRowsFromSnapshot() {
+    Object.keys(rowElements).forEach(updateRowDisplay);
+  }
+
+  // ── Changes panel + bake block ───────────────────────────────────────
+
+  function computeDeviations() {
+    var out = [];
+    state.specs.forEach(function (spec) {
+      var current = state.params[spec.key];
+      if (current === undefined) return;
+      if (current !== spec.default) {
+        out.push({ key: spec.key, current: current, default: spec.default });
+      }
+    });
+    out.sort(function (a, b) { return a.key < b.key ? -1 : a.key > b.key ? 1 : 0; });
+    return out;
+  }
+
+  function buildBakeBlock(deviations) {
+    if (deviations.length === 0) {
+      return "# no changes — all params at baked defaults";
+    }
+
+    var byDomain = {};
+    deviations.forEach(function (d) {
+      var base = d.key.split("@")[0];
+      var domain = base.split(".")[0];
+      byDomain[domain] = byDomain[domain] || [];
+      byDomain[domain].push(d);
+    });
+
+    var lines = [];
+    Object.keys(byDomain).sort().forEach(function (domain) {
+      lines.push("// " + domain);
+      byDomain[domain].forEach(function (d) {
+        lines.push(d.key + " = " + fmt(d.current) + "  // default was " + fmt(d.default));
+      });
+      lines.push("");
+    });
+
+    var jsonObj = {};
+    deviations.forEach(function (d) { jsonObj[d.key] = d.current; });
+    lines.push(JSON.stringify(jsonObj, null, 2));
+
+    return lines.join("\n");
+  }
+
+  function refreshChangesPanel() {
+    var deviations = computeDeviations();
+    changesCount.textContent = String(deviations.length);
+
+    changesList.innerHTML = "";
+    if (deviations.length === 0) {
+      var empty = document.createElement("div");
+      empty.id = "changes-empty";
+      empty.textContent = "no changes — all params at baked defaults";
+      changesList.appendChild(empty);
+    } else {
+      deviations.forEach(function (d) {
+        var row = document.createElement("div");
+        row.className = "change-row";
+        var k = document.createElement("span");
+        k.className = "k";
+        k.textContent = d.key + " = " + fmt(d.current);
+        var def = document.createElement("span");
+        def.className = "d";
+        def.textContent = "(default " + fmt(d.default) + ")";
+        row.appendChild(k);
+        row.appendChild(def);
+        changesList.appendChild(row);
+      });
+    }
+
+    bakeOutput.textContent = buildBakeBlock(deviations);
+  }
+
+  copyBtn.addEventListener("click", function () {
+    var text = bakeOutput.textContent;
+    var done = function () {
+      copyBtn.classList.add("copied");
+      copyBtn.textContent = "Copied";
+      setTimeout(function () {
+        copyBtn.classList.remove("copied");
+        copyBtn.textContent = "Copy bake block";
+      }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(done);
+    } else {
+      done();
+    }
+  });
+
+  // ── Status / connection banner ───────────────────────────────────────
+
+  function setConnected(connected) {
+    state.connected = connected;
+    statusEl.classList.toggle("connected", connected);
+    statusTextEl.textContent = connected
+      ? "dev client connected (:" + DEV_PORT + ")"
+      : "no live client tab — open http://localhost:" + DEV_PORT + "/ or wait for the preview iframe";
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────
+
+  function loadList() {
+    return bridgeGet("list").then(function (body) {
+      state.specs = body.specs || [];
+      state.specs.forEach(function (spec) { state.byKey[spec.key] = spec; });
+      clearError();
+      renderParamTree();
+    }).catch(function (err) {
+      showError(String(err.message || err) + " — is the dev server running? bridge is dev-only.");
+    });
+  }
+
+  function pollSnapshot() {
+    bridgeGet("snapshot").then(function (body) {
+      clearError();
+      var now = Date.now();
+      // Merge — don't clobber a value the user is actively editing, and don't clobber a
+      // just-committed value with a stale snapshot (bridge drain + report debounce lag).
+      Object.keys(body.params || {}).forEach(function (key) {
+        if (state.editing[key]) return;
+        var pending = pendingCommits[key];
+        if (pending) {
+          if (body.params[key] === pending.value) {
+            delete pendingCommits[key]; // snapshot caught up — safe to accept below
+          } else if (now < pending.expiresAt) {
+            return; // hold the optimistic value a bit longer
+          } else {
+            delete pendingCommits[key]; // timed out — accept the snapshot as truth
+          }
+        }
+        state.params[key] = body.params[key];
+      });
+      setConnected(!!body.connected);
+      refreshAllRowsFromSnapshot();
+      refreshChangesPanel();
+    }).catch(function (err) {
+      showError(String(err.message || err) + " — is the dev server running? bridge is dev-only.");
+      setConnected(false);
+    }).finally(function () {
+      setTimeout(pollSnapshot, 1000);
+    });
+  }
+
+  reloadPreview();
+  loadList().then(pollSnapshot);
+})();
+</script>
+</body>
+</html>

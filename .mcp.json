@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "surface-fx": {
+      "command": "node",
+      "args": ["scripts/surface-fx-mcp.mjs", "--port", "4040"]
+    }
+  }
+}

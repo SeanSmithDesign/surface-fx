@@ -17,6 +17,10 @@
     "react": ">=19",
     "motion": ">=12"
   },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.4.3"
+  },
   "devDependencies": {
     "typescript": "^5",
     "vitest": "^4.1.7",
@@ -27,6 +31,9 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "fx": "node scripts/surface-fx.mjs",
+    "fx:ui": "node scripts/surface-fx-ui.mjs",
+    "fx:mcp": "node scripts/surface-fx-mcp.mjs"
   }
 }

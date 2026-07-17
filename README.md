@@ -58,3 +58,23 @@ npm install
 npm run typecheck
 npm test
 ```
+
+## Tooling
+
+`scripts/` holds an agent-facing CLI, MCP server, and browser playground for
+dialing surface-fx params on a *running* site. These are HTTP-bridge clients
+— they talk to a consuming app's dev-only bridge route (e.g.
+`/api/dev/surface-fx` on seansmithdesign.com) over a port and never import
+this library's source directly, so they run from anywhere as long as they're
+pointed at a live `next dev` process that ships the bridge route and its
+client (`SurfaceFxBridge`).
+
+```bash
+npm run fx -- list --port 4040          # list registered params
+npm run fx -- get texture.grain.intensity --port 4040
+npm run fx -- set texture.grain.intensity 0.4 --port 4040
+npm run fx:ui -- --port 4040            # standalone playground UI
+npm run fx:mcp -- --port 4040           # stdio MCP server (see .mcp.json)
+```
+
+`.mcp.json` registers the MCP server for agent use out of the box.
