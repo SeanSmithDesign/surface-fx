@@ -28,6 +28,7 @@ import { exec } from "node:child_process";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const HTML_PATH = path.join(__dirname, "surface-fx-ui", "playground.html");
+const STANDALONE_JS_PATH = path.join(__dirname, "surface-fx-ui", "standalone.js");
 
 const DEFAULT_DEV_PORT = 4040;
 const DEFAULT_UI_PORT = 4041;
@@ -129,6 +130,28 @@ async function serveHtml(res, devPort) {
   res.end(html);
 }
 
+/**
+ * Serves the committed Stage-mode bundle (scripts/surface-fx-ui/standalone.js
+ * — see scripts/surface-fx-ui/build-standalone.mjs). Static file, no proxy,
+ * no build step — same "thin proxy + static file server" contract as
+ * serveHtml above.
+ */
+async function serveStandaloneJs(res) {
+  let js;
+  try {
+    js = await readFile(STANDALONE_JS_PATH, "utf8");
+  } catch (err) {
+    res.writeHead(500, { "content-type": "text/plain" });
+    res.end(
+      `Could not read standalone.js: ${err.message} — run ` +
+        `"node scripts/surface-fx-ui/build-standalone.mjs" to generate it.`,
+    );
+    return;
+  }
+  res.writeHead(200, { "content-type": "application/javascript; charset=utf-8" });
+  res.end(js);
+}
+
 function openBrowser(url) {
   const cmd =
     process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
@@ -155,6 +178,10 @@ async function main() {
     }
     if (url.pathname === "/" || url.pathname === "/index.html") {
       await serveHtml(res, devPort);
+      return;
+    }
+    if (url.pathname === "/standalone.js") {
+      await serveStandaloneJs(res);
       return;
     }
     res.writeHead(404, { "content-type": "text/plain" });

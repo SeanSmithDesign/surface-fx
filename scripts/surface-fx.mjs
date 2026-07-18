@@ -17,9 +17,14 @@
  *   node scripts/surface-fx.mjs set <key> <value> [--port 3000]
  *   node scripts/surface-fx.mjs watch [--group <prefix>] [--port 3000]
  *   node scripts/surface-fx.mjs diff [--group <prefix>] [--port 3000] [--json]
+ *   node scripts/surface-fx.mjs open [target] [--ui-port 4041]
  */
 
 const DEFAULT_PORT = 3000;
+// Mirrors surface-fx-ui.mjs's own default --ui-port (that file re-parses
+// process.argv itself on `ui`/`open` and falls back to the same 4041 when
+// the flag isn't passed — kept in sync by hand, both are tiny constants).
+const DEFAULT_UI_PORT = 4041;
 
 class CliError extends Error {}
 
@@ -280,6 +285,76 @@ async function cmdDiff(port, group, json) {
   }
 }
 
+// ── `open <target>` — the Stage playground's front door ─────────────────
+//
+// Launches the same zero-dependency playground server the `ui` verb does
+// (scripts/surface-fx-ui.mjs), pre-loaded on a named sample via the
+// "?stage=1&target=<id>" URL convention playground.html reads on boot (see
+// its stage-boot comment). No dev site (`next dev`) is required — Stage
+// mode is a self-contained local canvas.
+//
+// SAMPLE_IDS is a small, hand-kept mirror of src/samples/index.ts's
+// SURFACE_FX_SAMPLES ids/labels. This CLI is plain Node (no TS loader, no
+// bundler) so it cannot import that TypeScript module directly — keep this
+// list in sync by hand when samples are added/renamed there.
+const SAMPLE_IDS = [
+  { id: "disc", label: "Disc" },
+  { id: "sheet", label: "Sheet" },
+  { id: "halftone", label: "Halftone" },
+];
+
+function printSampleList() {
+  console.log("Available samples:");
+  for (const s of SAMPLE_IDS) console.log(`  ${s.id}  (${s.label})`);
+}
+
+async function cmdOpen(target, uiPort) {
+  if (target && target.toLowerCase().endsWith(".svg")) {
+    console.log(
+      [
+        `surface-fx open: "${target}" is an SVG target — SDF/SVG upload is a gated future seam, not implemented yet.`,
+        "It will plug in at the Stage shape picker (a third option alongside circle/rounded-rect) once an SDF bake",
+        "step exists to turn an arbitrary SVG outline into the shader's shape uniforms. Nothing was launched.",
+      ].join("\n"),
+    );
+    return;
+  }
+
+  const id = target || "disc";
+  const known = SAMPLE_IDS.some((s) => s.id === id);
+  if (!known) {
+    printSampleList();
+    throw new CliError(`"${id}" is not a known surface-fx sample.`);
+  }
+
+  // Same launch path the `ui` verb uses — surface-fx-ui.mjs re-parses
+  // process.argv itself (see that file's header) and starts serving
+  // immediately; it resolves before the server's "listening" event fires,
+  // so we poll below rather than trusting the import to mean "ready."
+  await import("./surface-fx-ui.mjs");
+
+  const url = `http://localhost:${uiPort}/?stage=1&target=${encodeURIComponent(id)}`;
+  const deadline = Date.now() + 5000;
+  let ready = false;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`http://localhost:${uiPort}/`);
+      if (res.ok) {
+        ready = true;
+        break;
+      }
+    } catch {
+      // not up yet — keep polling
+    }
+    await sleep(150);
+  }
+  if (!ready) {
+    throw new CliError(`surface-fx-ui server did not come up on port ${uiPort} within 5s.`);
+  }
+
+  console.log(`surface-fx stage open: ${url}`);
+}
+
 function printUsage() {
   console.log(
     [
@@ -290,6 +365,9 @@ function printUsage() {
       "  node scripts/surface-fx.mjs watch [--group <prefix>] [--port 3000]",
       "  node scripts/surface-fx.mjs diff [--group <prefix>] [--port 3000] [--json]",
       "  node scripts/surface-fx.mjs ui [--port 3000] [--ui-port 4041]",
+      "  node scripts/surface-fx.mjs open [target] [--ui-port 4041]",
+      "    target: a sample id (disc | sheet | halftone), a path ending in .svg",
+      "    (prints the gated SDF-seam message, doesn't launch), or omitted (defaults to disc).",
     ].join("\n"),
   );
 }
@@ -319,6 +397,9 @@ async function main() {
         // surface-fx-ui.mjs reads --port/--ui-port from process.argv itself
         // and starts its own server on import (no args to forward here).
         await import("./surface-fx-ui.mjs");
+        break;
+      case "open":
+        await cmdOpen(a1, args.uiPort || DEFAULT_UI_PORT);
         break;
       default:
         printUsage();
