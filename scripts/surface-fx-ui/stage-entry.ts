@@ -252,6 +252,25 @@ const THEME_COLORS: Record<ThemeKey, { ink: string; accent: string }> = {
   dark: { ink: "#f3eee3", accent: "#ff9b48" },
 };
 
+// ── Theme-aware stage background ────────────────────────────────────────
+// The disc/sheet dither is a low-opacity ink/accent texture DESIGNED to sit
+// on the page's --color-paper field (a light-theme sample renders dark ink
+// dots meant to read against light paper; a dark-theme sample renders light
+// ink dots meant to read against dark paper) — see ContactSheet.tsx/
+// FloatingIdentity.tsx, where this canvas is always a sibling/backdrop of
+// the paper-colored surface, never painted on raw black. Stage has no page
+// chrome to provide that field, so it must supply it directly. Values are
+// --color-paper transcribed verbatim from src/app/globals.css's
+// [data-palette="calm-warm"] (light) / [data-palette="midnight"] (dark)
+// blocks (read-only reference; not modified). Confirmed empirically: on
+// black the LED material was rendering but at ~2-4% effective luminance —
+// visually indistinguishable from "broken" — screenshotting the exact same
+// draw on these paper colors makes the dot grid clearly legible.
+const THEME_BACKGROUND: Record<ThemeKey, string> = {
+  light: "#f3eee3",
+  dark: "#161412",
+};
+
 const MODE_TO_INT: Record<string, number> = {
   css: 0,
   led: 1,
@@ -346,6 +365,7 @@ let currentTheme: ThemeKey = "light";
 let currentShape: ShapeKind = "circle";
 
 let mounted = false;
+let stageContainer: HTMLElement | null = null;
 let circleWrap: HTMLDivElement;
 let circleCanvas: HTMLCanvasElement;
 let circleRenderer: TextureWebGLRenderer | null = null;
@@ -359,14 +379,21 @@ function dpr(): number {
   return Math.min(window.devicePixelRatio || 1, MAX_DPR);
 }
 
+/** Applies THEME_BACKGROUND[currentTheme] to the mounted stage container. */
+function applyStageBackground(): void {
+  if (!stageContainer) return;
+  stageContainer.style.background = THEME_BACKGROUND[currentTheme];
+}
+
 function buildDom(container: HTMLElement): void {
   container.innerHTML = "";
+  stageContainer = container;
   container.style.display = "flex";
   container.style.alignItems = "center";
   container.style.justifyContent = "center";
   container.style.width = "100%";
   container.style.height = "100%";
-  container.style.background = "#000";
+  applyStageBackground();
 
   // -- Circle (disc, shapeMode 0) --------------------------------------------
   circleWrap = document.createElement("div");
@@ -596,6 +623,7 @@ function applySample(id: string): { shape: ShapeKind; theme: ThemeKey } | null {
   currentTheme = sample.theme;
   currentSampleId = sample.id;
   applyShapeVisibility();
+  applyStageBackground();
   redrawAll();
   return { shape: sample.shape, theme: sample.theme };
 }
@@ -646,6 +674,7 @@ const api: SurfaceFxStageAPI = {
   },
   setTheme(theme: ThemeKey) {
     currentTheme = theme;
+    applyStageBackground();
     redrawAll();
   },
   setShape(shape: ShapeKind) {

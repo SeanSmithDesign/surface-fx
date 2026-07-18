@@ -1830,6 +1830,10 @@ void main() {
     light: { ink: "#1a1610", accent: "#a4441f" },
     dark: { ink: "#f3eee3", accent: "#ff9b48" }
   };
+  var THEME_BACKGROUND = {
+    light: "#f3eee3",
+    dark: "#161412"
+  };
   var MODE_TO_INT = {
     css: 0,
     led: 1,
@@ -1893,6 +1897,7 @@ void main() {
   var currentTheme = "light";
   var currentShape = "circle";
   var mounted = false;
+  var stageContainer = null;
   var circleWrap;
   var circleCanvas;
   var circleRenderer = null;
@@ -1903,14 +1908,19 @@ void main() {
   function dpr() {
     return Math.min(window.devicePixelRatio || 1, MAX_DPR);
   }
+  function applyStageBackground() {
+    if (!stageContainer) return;
+    stageContainer.style.background = THEME_BACKGROUND[currentTheme];
+  }
   function buildDom(container) {
     container.innerHTML = "";
+    stageContainer = container;
     container.style.display = "flex";
     container.style.alignItems = "center";
     container.style.justifyContent = "center";
     container.style.width = "100%";
     container.style.height = "100%";
-    container.style.background = "#000";
+    applyStageBackground();
     circleWrap = document.createElement("div");
     circleWrap.setAttribute("data-stage-shape", "circle");
     circleWrap.style.position = "relative";
@@ -2064,6 +2074,7 @@ void main() {
     currentTheme = sample.theme;
     currentSampleId = sample.id;
     applyShapeVisibility();
+    applyStageBackground();
     redrawAll();
     return { shape: sample.shape, theme: sample.theme };
   }
@@ -2080,6 +2091,7 @@ void main() {
     },
     setTheme(theme) {
       currentTheme = theme;
+      applyStageBackground();
       redrawAll();
     },
     setShape(shape) {
