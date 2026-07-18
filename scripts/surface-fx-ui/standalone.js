@@ -1896,6 +1896,12 @@ void main() {
   var RECT_CANVAS_H = 380;
   var currentTheme = "light";
   var currentShape = "circle";
+  var backgroundMode = "paper";
+  var BACKGROUND_OVERRIDES = {
+    white: "#ffffff",
+    dark: "#111114",
+    checker: "conic-gradient(#d8d8d8 90deg, #f2f2f2 90deg 180deg, #d8d8d8 180deg 270deg, #f2f2f2 270deg) 0 0 / 16px 16px"
+  };
   var mounted = false;
   var stageContainer = null;
   var circleWrap;
@@ -1910,7 +1916,7 @@ void main() {
   }
   function applyStageBackground() {
     if (!stageContainer) return;
-    stageContainer.style.background = THEME_BACKGROUND[currentTheme];
+    stageContainer.style.background = backgroundMode === "paper" ? THEME_BACKGROUND[currentTheme] : BACKGROUND_OVERRIDES[backgroundMode];
   }
   function buildDom(container) {
     container.innerHTML = "";
@@ -2098,6 +2104,10 @@ void main() {
       currentShape = shape;
       applyShapeVisibility();
       redrawAll();
+    },
+    setBackground(mode) {
+      backgroundMode = mode;
+      applyStageBackground();
     },
     resize: redrawAll,
     destroy() {

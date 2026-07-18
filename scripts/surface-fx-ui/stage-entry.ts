@@ -364,6 +364,24 @@ const RECT_CANVAS_H = 380;
 let currentTheme: ThemeKey = "light";
 let currentShape: ShapeKind = "circle";
 
+/**
+ * Stage-mode control-strip background override — see playground.html's
+ * background-cycle control. "paper" (the default) follows THEME_BACKGROUND
+ * per applyStageBackground()'s normal behavior; any other mode is a fixed
+ * override that persists across setTheme()/loadSample() calls until set
+ * back to "paper".
+ */
+type BackgroundMode = "paper" | "white" | "checker" | "dark";
+let backgroundMode: BackgroundMode = "paper";
+
+const BACKGROUND_OVERRIDES: Record<Exclude<BackgroundMode, "paper">, string> = {
+  white: "#ffffff",
+  dark: "#111114",
+  checker:
+    "conic-gradient(#d8d8d8 90deg, #f2f2f2 90deg 180deg, #d8d8d8 180deg 270deg, #f2f2f2 270deg) " +
+    "0 0 / 16px 16px",
+};
+
 let mounted = false;
 let stageContainer: HTMLElement | null = null;
 let circleWrap: HTMLDivElement;
@@ -379,10 +397,19 @@ function dpr(): number {
   return Math.min(window.devicePixelRatio || 1, MAX_DPR);
 }
 
-/** Applies THEME_BACKGROUND[currentTheme] to the mounted stage container. */
+/**
+ * Applies the stage container's background: THEME_BACKGROUND[currentTheme]
+ * in "paper" mode (the default — follows theme), or the fixed
+ * BACKGROUND_OVERRIDES[backgroundMode] otherwise. Called on mount, and on
+ * every setTheme()/loadSample() so a non-"paper" override survives sample/
+ * theme switches without being stomped.
+ */
 function applyStageBackground(): void {
   if (!stageContainer) return;
-  stageContainer.style.background = THEME_BACKGROUND[currentTheme];
+  stageContainer.style.background =
+    backgroundMode === "paper"
+      ? THEME_BACKGROUND[currentTheme]
+      : BACKGROUND_OVERRIDES[backgroundMode];
 }
 
 function buildDom(container: HTMLElement): void {
@@ -640,6 +667,12 @@ interface SurfaceFxStageAPI {
   mount(container: HTMLElement): void;
   setTheme(theme: ThemeKey): void;
   setShape(shape: ShapeKind): void;
+  /**
+   * Stage-mode control-strip background cycle — see BackgroundMode above.
+   * "paper" resumes following the sample's theme; any other mode is a fixed
+   * override on the stage container until set back to "paper".
+   */
+  setBackground(mode: "paper" | "white" | "checker" | "dark"): void;
   resize(): void;
   destroy(): void;
   /** id/label/description only — see samples/index.ts for the full shape. */
@@ -681,6 +714,10 @@ const api: SurfaceFxStageAPI = {
     currentShape = shape;
     applyShapeVisibility();
     redrawAll();
+  },
+  setBackground(mode) {
+    backgroundMode = mode;
+    applyStageBackground();
   },
   resize: redrawAll,
   destroy() {

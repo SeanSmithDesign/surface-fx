@@ -471,6 +471,42 @@
         overflow: auto;
         background: #000;
       }
+
+      /* ── Stage control strip — Stage mode only. Floats over the canvas,
+     reusing the same dark instrument chrome (--panel/--panel-raised) and
+     .segmented group style as #app. Guarded to stage mode by the boot
+     script below (never inserted/shown when #app mode is active). */
+      #stage-controls {
+        display: none;
+        position: fixed;
+        left: 50%;
+        bottom: 20px;
+        transform: translateX(-50%);
+        z-index: 10;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+      }
+      #stage-controls .stage-control-group {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      #stage-controls .stage-control-label {
+        color: var(--text-dimmer);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      #stage-controls .stage-control-divider {
+        width: 1px;
+        height: 18px;
+        background: var(--border);
+      }
     </style>
   </head>
   <body>
@@ -519,6 +555,40 @@
          "?stage=1[&target=<id>]" is present (see the boot-time script
          below). window.SurfaceFxStage.mount() fills this in. -->
     <div id="stage-wrap"></div>
+
+    <!-- Stage mode control strip — sample/theme/background, sibling of
+         #stage-wrap, hidden unless "?stage=1[&target=<id>]" is present (see
+         the boot-time script below, which builds its buttons from
+         window.SurfaceFxStage.samples and sets display:flex). Never shown
+         in #app (iframe-bridge) mode. -->
+    <div id="stage-controls">
+      <div class="stage-control-group" id="stage-sample-group">
+        <span class="stage-control-label">Sample</span>
+        <div
+          class="segmented"
+          id="stage-sample-segmented"
+          data-sample-group
+        ></div>
+      </div>
+      <div class="stage-control-divider"></div>
+      <div class="stage-control-group">
+        <span class="stage-control-label">Theme</span>
+        <div class="segmented" data-theme-group>
+          <button data-theme="light">Light</button>
+          <button data-theme="dark">Dark</button>
+        </div>
+      </div>
+      <div class="stage-control-divider"></div>
+      <div class="stage-control-group">
+        <span class="stage-control-label">Background</span>
+        <div class="segmented" data-bg-group>
+          <button data-bg="paper">Paper</button>
+          <button data-bg="white">White</button>
+          <button data-bg="checker">Checker</button>
+          <button data-bg="dark">Dark</button>
+        </div>
+      </div>
+    </div>
 
     <script>
       (function () {
@@ -1165,6 +1235,85 @@
             });
         }
 
+        // ── Stage control strip — sample switcher / theme toggle /
+        // background cycle. Stage mode only; called once from the Stage
+        // boot block below after window.SurfaceFxStage.mount(). ───────────
+        function setUpStageControls(initialTarget) {
+          var sampleGroupEl = document.getElementById("stage-sample-segmented");
+          var themeGroupEl = document.querySelector(
+            "#stage-controls [data-theme-group]",
+          );
+          var bgGroupEl = document.querySelector(
+            "#stage-controls [data-bg-group]",
+          );
+
+          function setActive(groupEl, selector, value) {
+            var buttons = groupEl.querySelectorAll("button");
+            for (var i = 0; i < buttons.length; i++) {
+              var btn = buttons[i];
+              btn.classList.toggle(
+                "active",
+                btn.getAttribute(selector) === value,
+              );
+            }
+          }
+
+          // Sample buttons are built from window.SurfaceFxStage.samples
+          // (id/label) rather than hardcoded, so the strip always matches
+          // whatever samples/index.ts defines.
+          window.SurfaceFxStage.samples.forEach(function (sample) {
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = sample.label;
+            btn.setAttribute("data-sample", sample.id);
+            btn.addEventListener("click", function () {
+              var applied = window.SurfaceFxStage.loadSample(sample.id);
+              if (!applied) return;
+              setActive(sampleGroupEl, "data-sample", sample.id);
+              setActive(themeGroupEl, "data-theme", applied.theme);
+              var url = new URL(window.location.href);
+              url.searchParams.set("target", sample.id);
+              window.history.replaceState(null, "", url);
+            });
+            sampleGroupEl.appendChild(btn);
+          });
+
+          // Theme toggle.
+          var themeButtons = themeGroupEl.querySelectorAll("button");
+          for (var t = 0; t < themeButtons.length; t++) {
+            themeButtons[t].addEventListener("click", function (e) {
+              var theme = e.currentTarget.getAttribute("data-theme");
+              window.SurfaceFxStage.setTheme(theme);
+              setActive(themeGroupEl, "data-theme", theme);
+            });
+          }
+
+          // Background cycle.
+          var bgButtons = bgGroupEl.querySelectorAll("button");
+          for (var b = 0; b < bgButtons.length; b++) {
+            bgButtons[b].addEventListener("click", function (e) {
+              var mode = e.currentTarget.getAttribute("data-bg");
+              window.SurfaceFxStage.setBackground(mode);
+              setActive(bgGroupEl, "data-bg", mode);
+            });
+          }
+
+          // Initial state: apply the boot-time target explicitly so we get
+          // its {shape, theme} back to sync the sample + theme toggles (the
+          // mount()-internal "disc" fallback doesn't expose a return value
+          // to this scope). Reapplying the already-applied sample is a
+          // harmless no-op redraw.
+          var applied = window.SurfaceFxStage.loadSample(initialTarget);
+          var resolvedId = applied ? initialTarget : "disc";
+          setActive(sampleGroupEl, "data-sample", resolvedId);
+          setActive(
+            themeGroupEl,
+            "data-theme",
+            applied ? applied.theme : "light",
+          );
+          setActive(bgGroupEl, "data-bg", "paper");
+        }
+
         // ── Stage boot — "?stage=1[&target=<id>]" (set by
         // scripts/surface-fx.mjs's `open` verb) renders the sample locally
         // via window.SurfaceFxStage and skips the iframe/bridge boot below
@@ -1178,11 +1327,14 @@
           document.getElementById("app").style.display = "none";
           var stageWrap = document.getElementById("stage-wrap");
           stageWrap.style.display = "block";
+          var stageControls = document.getElementById("stage-controls");
+          stageControls.style.display = "flex";
+
           var stageScript = document.createElement("script");
           stageScript.src = "/standalone.js";
           stageScript.onload = function () {
             window.SurfaceFxStage.mount(stageWrap);
-            if (stageTarget) window.SurfaceFxStage.loadSample(stageTarget);
+            setUpStageControls(stageTarget || "disc");
           };
           stageScript.onerror = function () {
             stageWrap.textContent =
