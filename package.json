@@ -14,26 +14,28 @@
     "README.md"
   ],
   "peerDependencies": {
-    "react": ">=19",
-    "motion": ">=12"
+    "motion": ">=12",
+    "react": ">=19"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "typescript": "^5",
-    "vitest": "^4.1.7",
-    "react": "19.2.7",
-    "@types/react": "^19",
     "@types/node": "^22",
-    "motion": "^12.40.0"
+    "@types/react": "^19",
+    "esbuild": "^0.28.1",
+    "motion": "^12.40.0",
+    "react": "19.2.7",
+    "typescript": "^5",
+    "vitest": "^4.1.7"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "fx": "node scripts/surface-fx.mjs",
     "fx:ui": "node scripts/surface-fx-ui.mjs",
-    "fx:mcp": "node scripts/surface-fx-mcp.mjs"
+    "fx:mcp": "node scripts/surface-fx-mcp.mjs",
+    "fx:build-stage": "node scripts/surface-fx-ui/build-standalone.mjs"
   }
 }
