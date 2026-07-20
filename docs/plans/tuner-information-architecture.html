@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>surface-fx tuner — information architecture</title>
+    <link rel="stylesheet" href="http://localhost:4849/assets/plan.css" />
+    <style>
+      .ia-hero {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin: 1.2rem 0 1.6rem;
+      }
+      .stat {
+        flex: 1 1 150px;
+        border: 1px solid var(--border, #d8cfbd);
+        border-radius: 10px;
+        padding: 0.9rem 1rem;
+        background: rgba(168, 118, 26, 0.05);
+      }
+      .stat .big {
+        font-size: 2rem;
+        font-weight: 680;
+        letter-spacing: -0.02em;
+        color: #a8761a;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      @media (prefers-color-scheme: dark) {
+        .stat .big {
+          color: #d8a838;
+        }
+      }
+      .stat .lab {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.66rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted, #8a8172);
+        margin-top: 0.35rem;
+      }
+
+      .collapse-viz {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin: 1rem 0 1.2rem;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.8rem;
+      }
+      .cv-box {
+        border: 1px solid var(--border, #d8cfbd);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        text-align: center;
+      }
+      .cv-box .n {
+        font-size: 1.15rem;
+        font-weight: 680;
+        color: #33302a;
+        font-variant-numeric: tabular-nums;
+      }
+      @media (prefers-color-scheme: dark) {
+        .cv-box .n {
+          color: #ece4d3;
+        }
+      }
+      .cv-box .t {
+        font-size: 0.6rem;
+        color: var(--muted, #8a8172);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .cv-arrow {
+        color: #a8761a;
+        font-size: 1rem;
+      }
+      .cv-filter {
+        font-size: 0.62rem;
+        color: var(--muted, #8a8172);
+      }
+
+      table {
+        font-size: 0.9rem;
+      }
+      td .k {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.82em;
+        color: #a8761a;
+      }
+      @media (prefers-color-scheme: dark) {
+        td .k {
+          color: #d8a838;
+        }
+      }
+      td.num {
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      /* tree */
+      .tree {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.8rem;
+        line-height: 1.7;
+        background: rgba(0, 0, 0, 0.02);
+        border: 1px solid var(--border, #d8cfbd);
+        border-radius: 10px;
+        padding: 1rem 1.1rem;
+        overflow-x: auto;
+      }
+      @media (prefers-color-scheme: dark) {
+        .tree {
+          background: rgba(255, 255, 255, 0.02);
+        }
+      }
+      .tree .folder {
+        color: #33302a;
+        font-weight: 600;
+      }
+      @media (prefers-color-scheme: dark) {
+        .tree .folder {
+          color: #ece4d3;
+        }
+      }
+      .tree .param {
+        color: var(--muted, #7d7566);
+      }
+      .tree .cnt {
+        color: #a8761a;
+      }
+      .tree .badge {
+        font-size: 0.62rem;
+        padding: 0.05rem 0.4rem;
+        border-radius: 100px;
+        margin-left: 0.5rem;
+        border: 1px solid currentColor;
+        letter-spacing: 0.03em;
+      }
+      .b-always {
+        color: #4f7a3f;
+      }
+      .b-context {
+        color: #a8761a;
+      }
+      .b-hidden {
+        color: #9a7bb0;
+      }
+      .b-adv {
+        color: #8a8172;
+      }
+      @media (prefers-color-scheme: dark) {
+        .b-always {
+          color: #8bb877;
+        }
+        .b-hidden {
+          color: #c3a5d8;
+        }
+      }
+      .tree .ind {
+        color: #cbc3b1;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin: 0.7rem 0 0;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.68rem;
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 2px;
+        display: inline-block;
+      }
+
+      .zones {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.8rem;
+        margin: 1rem 0;
+      }
+      @media (max-width: 720px) {
+        .zones {
+          grid-template-columns: 1fr;
+        }
+      }
+      .zone {
+        border: 1px solid var(--border, #d8cfbd);
+        border-radius: 10px;
+        padding: 0.9rem 1rem;
+      }
+      .zone h4 {
+        margin: 0 0 0.3rem;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .zone .tag {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.6rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #fff;
+        background: #a8761a;
+        padding: 0.12rem 0.45rem;
+        border-radius: 4px;
+      }
+      .zone ul {
+        margin: 0.4rem 0 0;
+        padding-left: 1.1rem;
+        font-size: 0.9rem;
+      }
+      .zone li {
+        margin: 0.25rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>surface-fx tuner — information architecture</h1>
+    <p class="doc-meta">
+      surface-fx · 2026-07-20 · content model before layout · grounded in the
+      real schema
+    </p>
+
+    <section data-anchor-id="ia-scope">
+      <h2>1 · The real scope</h2>
+      <p>
+        We've been designing around ~6 placeholder dials. The actual schema
+        holds <strong>255 tunable parameters</strong> across four surfaces.
+        That's why the mid-fi felt thin — it wasn't showing the thing we have to
+        organize.
+      </p>
+
+      <div class="ia-hero">
+        <div class="stat">
+          <div class="big">255</div>
+          <div class="lab">params in schema</div>
+        </div>
+        <div class="stat">
+          <div class="big">4</div>
+          <div class="lab">effect surfaces</div>
+        </div>
+        <div class="stat">
+          <div class="big">9</div>
+          <div class="lab">shader modes (1 active)</div>
+        </div>
+        <div class="stat">
+          <div class="big">~15</div>
+          <div class="lab">visible at once</div>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Surface</th>
+              <th class="num">Stored</th>
+              <th>Why so many</th>
+              <th class="num">Logical dials</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="k">texture.*</span></td>
+              <td class="num">168</td>
+              <td>~42 dials × 2 surfaces × 2 themes; 9 modes but 1 active</td>
+              <td class="num">~14 live</td>
+            </tr>
+            <tr>
+              <td><span class="k">bloom.*</span></td>
+              <td class="num">66</td>
+              <td>33 dials × 2 themes (light/dark values)</td>
+              <td class="num">33</td>
+            </tr>
+            <tr>
+              <td><span class="k">feed.hover.*</span></td>
+              <td class="num">17</td>
+              <td>flat — wake / ripple / glow / dither</td>
+              <td class="num">17</td>
+            </tr>
+            <tr>
+              <td><span class="k">sheet.shadow.*</span></td>
+              <td class="num">4</td>
+              <td>
+                superseded proof-of-concept (bloom's dither-shadow replaced it)
+              </td>
+              <td class="num">— fold</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section data-anchor-id="ia-thesis">
+      <h2>2 · The thesis — context is the filter</h2>
+      <p>
+        255 is mostly <strong>multiplexing</strong>, not 255 things on screen.
+        The same logical dial is stored once per theme, per surface, per mode.
+        So the job isn't "fit 255 sliders" — it's
+        <strong
+          >let context collapse 255 down to the ~15 that matter right
+          now.</strong
+        >
+      </p>
+
+      <div class="collapse-viz">
+        <div class="cv-box">
+          <div class="n">255</div>
+          <div class="t">all params</div>
+        </div>
+        <span class="cv-arrow">→</span>
+        <span class="cv-filter">pick surface<br />(disc)</span>
+        <span class="cv-arrow">→</span>
+        <div class="cv-box">
+          <div class="n">~63</div>
+          <div class="t">this surface</div>
+        </div>
+        <span class="cv-arrow">→</span>
+        <span class="cv-filter">pick theme<br />(dark)</span>
+        <span class="cv-arrow">→</span>
+        <div class="cv-box">
+          <div class="n">~32</div>
+          <div class="t">this theme</div>
+        </div>
+        <span class="cv-arrow">→</span>
+        <span class="cv-filter">active mode<br />(halftone)</span>
+        <span class="cv-arrow">→</span>
+        <div class="cv-box" style="border-color: #a8761a">
+          <div class="n">~15</div>
+          <div class="t">on screen</div>
+        </div>
+      </div>
+
+      <p>
+        Those four selectors —
+        <strong>surface, theme, active mode, selected layer</strong> — are the
+        top-bar controls. They're not decoration; they're the mechanism that
+        makes the panel small.
+        <em>Every one of your asks resolves through this:</em>
+      </p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Your ask</th>
+              <th>How context answers it</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Fewer panels</td>
+              <td>
+                Top-bar selectors replace whole panels of choices —
+                theme/surface stop being panels, become filters.
+              </td>
+            </tr>
+            <tr>
+              <td>Subfolders / nesting</td>
+              <td>
+                Already in the keys:
+                <span class="k">domain → surface → group → param</span>. We
+                surface the tree, don't invent it.
+              </td>
+            </tr>
+            <tr>
+              <td>Not there at all times</td>
+              <td>
+                Only the <strong>active mode's</strong> dials render (~4); the
+                other 8 modes' 28 params stay hidden until you switch.
+              </td>
+            </tr>
+            <tr>
+              <td>Imploding, not fixed</td>
+              <td>
+                Each group is a collapsible folder; theme collapses two dials
+                into one "edit current theme."
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section data-anchor-id="ia-tree">
+      <h2>3 · The content tree (texture, worked in full)</h2>
+      <p>
+        The messiest surface, shown complete, tagged by <em>when</em> each thing
+        appears. This is the progressive-disclosure map.
+      </p>
+
+      <div class="tree">
+        <div>
+          <span class="folder">texture</span> <span class="cnt">/ 168</span>
+        </div>
+        <div>
+          <span class="ind">├─</span> <span class="param">surface:</span>
+          <span class="folder">disc</span> · sheet
+          <span class="badge b-context">top-bar filter</span>
+        </div>
+        <div>
+          <span class="ind">├─</span> <span class="param">theme:</span>
+          <span class="folder">light</span> · dark
+          <span class="badge b-context">top-bar filter</span>
+        </div>
+        <div><span class="ind">│</span></div>
+        <div>
+          <span class="ind">├─</span> <span class="folder">Layer</span>
+          <span class="badge b-always">always</span>
+        </div>
+        <div>
+          <span class="ind">│&nbsp;&nbsp;├─</span>
+          <span class="param">enabled</span> <span class="param">(toggle)</span>
+        </div>
+        <div>
+          <span class="ind">│&nbsp;&nbsp;└─</span>
+          <span class="param">mode</span>
+          <span class="param"
+            >(led · concentric · flow · bayer · halftone · …)</span
+          >
+        </div>
+        <div><span class="ind">│</span></div>
+        <div>
+          <span class="ind">├─</span> <span class="folder">Envelope</span>
+          <span class="cnt">/ 8</span>
+          <span class="badge b-always">always — shared by all modes</span>
+        </div>
+        <div>
+          <span class="ind">│&nbsp;&nbsp;├─</span>
+          <span class="param"
+            >reach · fadeOrigin · fadeSoftness · innerCutout</span
+          >
+        </div>
+        <div>
+          <span class="ind">│&nbsp;&nbsp;├─</span>
+          <span class="param">opacity · screenBlend · tint</span>
+        </div>
+        <div>
+          <span class="ind">│&nbsp;&nbsp;└─</span>
+          <span class="param">mobileScale</span>
+          <span class="badge b-adv">advanced</span>
+        </div>
+        <div><span class="ind">│</span></div>
+        <div>
+          <span class="ind">├─</span> <span class="folder">Mode: halftone</span>
+          <span class="cnt">/ 4</span>
+          <span class="badge b-context">only the active mode</span>
+        </div>
+        <div>
+          <span class="ind">│&nbsp;&nbsp;└─</span>
+          <span class="param">cellSize · dotMax · angle · contrast</span>
+        </div>
+        <div><span class="ind">│</span></div>
+        <div>
+          <span class="ind">└─</span>
+          <span class="param"
+            >Modes: led, concentric, flow, bayer, bluenoise, scanlines,
+            crosshatch, lego</span
+          >
+          <span class="badge b-hidden">hidden until selected</span>
+          <span class="cnt">(28 params)</span>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span
+          ><span class="dot" style="background: #4f7a3f"></span> always
+          visible</span
+        >
+        <span
+          ><span class="dot" style="background: #a8761a"></span> context filter
+          / active-only</span
+        >
+        <span
+          ><span class="dot" style="background: #9a7bb0"></span> hidden until
+          selected</span
+        >
+        <span
+          ><span class="dot" style="background: #8a8172"></span> advanced
+          (collapsed)</span
+        >
+      </div>
+
+      <p style="margin-top: 1rem">
+        Net for one disc + dark + halftone:
+        <strong>2 layer + 7 envelope + 4 mode ≈ 13 dials</strong> on screen —
+        out of 168 stored. The other 155 are one selector-flip away, never all
+        at once.
+      </p>
+    </section>
+
+    <section data-anchor-id="ia-zones">
+      <h2>4 · Proposed zones</h2>
+      <p>
+        Mapping the model onto the tool. Fewer, collapsible surfaces — driven by
+        context.
+      </p>
+
+      <div class="zones">
+        <div class="zone">
+          <h4><span class="tag">Top bar</span> Context &amp; global</h4>
+          <ul>
+            <li>
+              <strong>Surface / layer</strong> selector — disc, sheet (and
+              future layers)
+            </li>
+            <li>
+              <strong>Theme</strong> toggle — decides which theme's values you
+              edit
+            </li>
+            <li><strong>Mode</strong> picker — sets the active shader mode</li>
+            <li>
+              <strong>Background</strong> isolate · <strong>Bake → site</strong>
+            </li>
+          </ul>
+        </div>
+        <div class="zone">
+          <h4><span class="tag">Inspector</span> The look</h4>
+          <ul>
+            <li>
+              Collapsible folders:
+              <strong>Layer · Envelope · Mode</strong> (active only)
+            </li>
+            <li>
+              <strong>reducedMotionSafe = true</strong> params live here (static
+              appearance)
+            </li>
+            <li>Advanced dials (e.g. mobileScale) collapsed by default</li>
+          </ul>
+        </div>
+        <div class="zone">
+          <h4><span class="tag">Motion</span> The behavior</h4>
+          <ul>
+            <li>
+              <strong>reducedMotionSafe = false</strong> params: springs,
+              durations, speeds
+            </li>
+            <li>The Direction-D trigger + envelope editor lives here</li>
+            <li>Per selected layer, matching its trigger</li>
+          </ul>
+        </div>
+        <div class="zone">
+          <h4><span class="tag">Rule</span> Progressive disclosure</h4>
+          <ul>
+            <li>Only the <strong>active mode's</strong> params ever render</li>
+            <li>
+              Theme = one dial editing the current theme (opt-in "edit both")
+            </li>
+            <li>
+              Folders remember collapsed/open state (localStorage, per Dialkit)
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section data-anchor-id="ia-react">
+      <h2>5 · React to</h2>
+      <ul>
+        <li>
+          <strong>The thesis</strong> — is "context filters 255 → ~15" the right
+          organizing idea, or do you want more visible at once (a denser,
+          pro-tool stance)?
+        </li>
+        <li>
+          <strong>Theme handling</strong> — collapse
+          <span class="k">@light/@dark</span> into one "current theme" dial, or
+          show both side-by-side so you see divergence?
+        </li>
+        <li>
+          <strong>Scope</strong> — do we expose all four surfaces (texture /
+          bloom / feed-hover), or does the tool-first product center on ONE
+          (texture) and treat the rest as the site's private config?
+        </li>
+        <li>
+          <strong>Look vs Motion split</strong> — the
+          <span class="k">reducedMotionSafe</span> flag already sorts every
+          param into static vs motion. Lean on it as the inspector/motion
+          divider?
+        </li>
+      </ul>
+      <p>
+        Once the model's agreed, I re-draw D's layout against the
+        <em>real</em> ~15-dial working set — that's the mid-fi that'll actually
+        hold up.
+      </p>
+    </section>
+  </body>
+</html>

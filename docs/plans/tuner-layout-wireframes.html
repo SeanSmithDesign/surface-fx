@@ -1,0 +1,1070 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>surface-fx tuner — low-fi layout directions</title>
+    <link rel="stylesheet" href="http://localhost:4849/assets/plan.css" />
+    <style>
+      .wf-intro-tokens {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 1rem 0 1.5rem;
+      }
+      .wf-token {
+        font-family: ui-monospace, "SF Mono", Menlo, monospace;
+        font-size: 0.72rem;
+        letter-spacing: 0.04em;
+        padding: 0.28rem 0.6rem;
+        border: 1px solid var(--border, #d8cfbd);
+        border-radius: 6px;
+        background: rgba(168, 118, 26, 0.08);
+        color: var(--muted, #6b6350);
+      }
+
+      /* ── low-fi wireframe frame ── */
+      .wf {
+        --wf-ink: #3a352c;
+        --wf-line: #b9b0a0;
+        --wf-fill: #e9e4d8;
+        --wf-fill-2: #ded8c9;
+        --wf-stage: #f4f1e8;
+        --wf-accent: #a8761a;
+        border: 1px solid var(--wf-line);
+        border-radius: 10px;
+        overflow: hidden;
+        background: #f7f4ec;
+        margin: 1.1rem 0 0.6rem;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+      }
+      .wf-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.7rem;
+        border-bottom: 1px solid var(--wf-line);
+        background: #efe9dc;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.68rem;
+        color: #8a8172;
+        letter-spacing: 0.04em;
+      }
+      .wf-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #c9c0ae;
+      }
+      .wf-canvas {
+        display: grid;
+        height: 360px;
+      }
+      .wf-region {
+        border: 1px dashed var(--wf-line);
+        margin: 6px;
+        border-radius: 6px;
+        padding: 0.5rem 0.6rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+        min-width: 0;
+        background: var(--wf-fill);
+        color: var(--wf-ink);
+      }
+      .wf-region.solid {
+        background: var(--wf-fill-2);
+        border-style: solid;
+      }
+      .wf-region.stage {
+        background: repeating-conic-gradient(#ece6d8 0% 25%, #f4f1e8 0% 50%)
+          50% / 20px 20px;
+        align-items: center;
+        justify-content: center;
+        border-style: solid;
+      }
+      .wf-label {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.66rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #8a8172;
+        font-weight: 600;
+      }
+      .wf-region.stage .wf-label {
+        color: #a49a86;
+      }
+      .wf-accordion {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+      }
+      .wf-acc {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.66rem;
+        color: #5b5347;
+        border: 1px solid var(--wf-line);
+        border-radius: 5px;
+        padding: 0.32rem 0.45rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #f2eee2;
+      }
+      .wf-acc.open {
+        background: #fff;
+        border-color: var(--wf-accent);
+        color: #3a352c;
+      }
+      .wf-acc .fields {
+        font-size: 0.6rem;
+        color: #9a9081;
+      }
+      .wf-slider {
+        height: 5px;
+        border-radius: 3px;
+        background: #cfc6b4;
+        margin: 0.15rem 0;
+        position: relative;
+      }
+      .wf-slider::after {
+        content: "";
+        position: absolute;
+        top: -3px;
+        left: 38%;
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        background: var(--wf-accent);
+      }
+      .wf-chip {
+        display: inline-block;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.6rem;
+        padding: 0.15rem 0.4rem;
+        border: 1px solid var(--wf-line);
+        border-radius: 4px;
+        background: #f2eee2;
+        color: #6b6350;
+      }
+      .wf-chip.on {
+        background: var(--wf-accent);
+        color: #fff;
+        border-color: var(--wf-accent);
+      }
+      .wf-strip {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        flex-wrap: wrap;
+      }
+      .wf-btn {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.62rem;
+        padding: 0.3rem 0.55rem;
+        border-radius: 5px;
+        background: #3a352c;
+        color: #f4f1e8;
+      }
+      .wf-btn.ghost {
+        background: transparent;
+        color: #6b6350;
+        border: 1px solid var(--wf-line);
+      }
+      .wf-layers {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+      }
+      .wf-layer {
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.6rem;
+        padding: 0.3rem 0.4rem;
+        border-radius: 4px;
+        border: 1px solid var(--wf-line);
+        background: #f2eee2;
+        color: #6b6350;
+        text-align: center;
+      }
+      .wf-layer.sel {
+        background: #fff;
+        border-color: var(--wf-accent);
+        color: #3a352c;
+      }
+      .wf-sync {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.6rem;
+        color: #6b6350;
+      }
+      .wf-sync::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #6f9a5a;
+      }
+      .wf-drawer-hint {
+        writing-mode: vertical-rl;
+        text-align: center;
+        font-family: ui-monospace, Menlo, monospace;
+        font-size: 0.6rem;
+        letter-spacing: 0.1em;
+        color: #8a8172;
+      }
+
+      .wf-meta {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.9rem;
+        margin: 0.4rem 0 1.4rem;
+      }
+      @media (max-width: 720px) {
+        .wf-meta {
+          grid-template-columns: 1fr;
+        }
+      }
+      .wf-meta .cell {
+        border: 1px solid var(--border, #d8cfbd);
+        border-radius: 8px;
+        padding: 0.7rem 0.85rem;
+        background: rgba(0, 0, 0, 0.015);
+      }
+      .wf-meta .cell h4 {
+        margin: 0 0 0.3rem;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted, #8a8172);
+        font-family: ui-monospace, Menlo, monospace;
+      }
+      .wf-meta .cell p {
+        margin: 0;
+        font-size: 0.9rem;
+        line-height: 1.4;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>surface-fx tuner — low-fi layout directions</h1>
+    <p class="doc-meta">
+      surface-fx · 2026-07-18 · low-fi wireframes · react &amp; converge
+    </p>
+
+    <section data-anchor-id="wf-intro">
+      <p>
+        Six ways to arrange the Canvas-style tuner. All carry the same locked
+        pieces — only the <strong>arrangement</strong> differs (D also adds a
+        time axis). React to the <em>structure</em>; ignore proportions,
+        spacing, and polish (that's the next pass).
+      </p>
+      <div class="wf-intro-tokens">
+        <span class="wf-token">Form · Shape · Pattern</span>
+        <span class="wf-token">Visibility · Density · Feather · Opacity</span>
+        <span class="wf-token">Color · standalone</span>
+        <span class="wf-token">Stage preview</span>
+        <span class="wf-token">Sample / Theme / Background</span>
+        <span class="wf-token">Bake → sync to site</span>
+      </div>
+    </section>
+
+    <!-- ─────────────── DIRECTION A ─────────────── -->
+    <section data-anchor-id="wf-a">
+      <h2>
+        A — Inspector
+        <span style="font-weight: 400; color: var(--muted, #8a8172)"
+          >(Figma / Photoshop classic)</span
+        >
+      </h2>
+      <p>
+        Layers rail on the left, stage in the middle, a properties inspector on
+        the right holding the three accordions for whatever layer is selected.
+      </p>
+
+      <div class="wf">
+        <div class="wf-bar">
+          <span class="wf-dot"></span><span class="wf-dot"></span
+          ><span class="wf-dot"></span
+          ><span style="margin-left: 0.4rem">surface-fx · disc</span>
+        </div>
+        <div
+          class="wf-canvas"
+          style="
+            grid-template-columns: 96px 1fr 208px;
+            grid-template-rows: 1fr 46px;
+          "
+        >
+          <div class="wf-region solid" style="grid-row: 1 / 3">
+            <span class="wf-label">Layers</span>
+            <div class="wf-layers">
+              <div class="wf-layer sel">Dither</div>
+              <div class="wf-layer">Ripple</div>
+              <div class="wf-layer">Texture</div>
+              <div
+                class="wf-layer"
+                style="border-style: dashed; color: #a49a86"
+              >
+                + add
+              </div>
+            </div>
+          </div>
+          <div class="wf-region stage" style="grid-column: 2; grid-row: 1">
+            <span class="wf-label">Stage preview</span>
+          </div>
+          <div
+            class="wf-region"
+            style="
+              grid-column: 2;
+              grid-row: 2;
+              flex-direction: row;
+              align-items: center;
+            "
+          >
+            <div class="wf-strip">
+              <span class="wf-chip on">Disc</span
+              ><span class="wf-chip">Sheet</span
+              ><span class="wf-chip">Halftone</span>
+              <span
+                style="width: 1px; height: 16px; background: #cfc6b4"
+              ></span>
+              <span class="wf-chip">Light</span
+              ><span class="wf-chip on">Dark</span>
+              <span
+                style="width: 1px; height: 16px; background: #cfc6b4"
+              ></span>
+              <span class="wf-chip">Bg</span>
+            </div>
+          </div>
+          <div class="wf-region solid" style="grid-row: 1 / 3">
+            <span class="wf-label">Inspector — Dither</span>
+            <div class="wf-accordion">
+              <div class="wf-acc open">
+                Form <span class="fields">shape · pattern</span>
+              </div>
+              <div class="wf-slider"></div>
+              <div class="wf-acc">
+                Visibility
+                <span class="fields">density · feather · opacity</span>
+              </div>
+              <div class="wf-acc">Color <span class="fields">tint</span></div>
+            </div>
+            <div
+              style="
+                margin-top: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 0.4rem;
+              "
+            >
+              <div class="wf-sync">MCP connected</div>
+              <div class="wf-btn" style="text-align: center">Bake → site</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wf-meta">
+        <div class="cell">
+          <h4>Optimizes for</h4>
+          <p>
+            Scaling to a real layer stack — dither, ripple, texture as stacked
+            effects.
+          </p>
+        </div>
+        <div class="cell">
+          <h4>Trade-off</h4>
+          <p>Two side panels squeeze the stage; heaviest of the three.</p>
+        </div>
+        <div class="cell">
+          <h4>Best when</h4>
+          <p>The tool grows into multi-layer surface composition.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── DIRECTION B ─────────────── -->
+    <section data-anchor-id="wf-b">
+      <h2>
+        B — Single Panel
+        <span style="font-weight: 400; color: var(--muted, #8a8172)"
+          >(closest to today)</span
+        >
+      </h2>
+      <p>
+        One panel on the left carries everything top-to-bottom; the stage gets
+        the whole rest of the screen. A direct evolution of the playground that
+        exists now.
+      </p>
+
+      <div class="wf">
+        <div class="wf-bar">
+          <span class="wf-dot"></span><span class="wf-dot"></span
+          ><span class="wf-dot"></span
+          ><span style="margin-left: 0.4rem">surface-fx · disc</span>
+        </div>
+        <div class="wf-canvas" style="grid-template-columns: 236px 1fr">
+          <div class="wf-region solid">
+            <span class="wf-label">Sample / Theme / Bg</span>
+            <div class="wf-strip">
+              <span class="wf-chip on">Disc</span
+              ><span class="wf-chip">Sheet</span
+              ><span class="wf-chip">Half</span>
+            </div>
+            <div class="wf-strip">
+              <span class="wf-chip">Light</span
+              ><span class="wf-chip on">Dark</span
+              ><span class="wf-chip">Paper</span
+              ><span class="wf-chip">Checker</span>
+            </div>
+            <span class="wf-label" style="margin-top: 0.3rem">Dials</span>
+            <div class="wf-accordion">
+              <div class="wf-acc open">
+                Form <span class="fields">shape · pattern</span>
+              </div>
+              <div class="wf-slider"></div>
+              <div class="wf-acc open">
+                Visibility
+                <span class="fields">density · feather · opacity</span>
+              </div>
+              <div class="wf-slider"></div>
+              <div class="wf-slider"></div>
+              <div class="wf-acc">Color <span class="fields">tint</span></div>
+            </div>
+            <div
+              style="
+                margin-top: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 0.4rem;
+              "
+            >
+              <div class="wf-sync">CLI connected</div>
+              <div class="wf-btn" style="text-align: center">Bake → site</div>
+            </div>
+          </div>
+          <div class="wf-region stage">
+            <span class="wf-label">Stage preview</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="wf-meta">
+        <div class="cell">
+          <h4>Optimizes for</h4>
+          <p>
+            Simplicity and momentum — smallest jump from what's already built.
+          </p>
+        </div>
+        <div class="cell">
+          <h4>Trade-off</h4>
+          <p>
+            No obvious home for a layer stack; the panel gets tall as dials
+            grow.
+          </p>
+        </div>
+        <div class="cell">
+          <h4>Best when</h4>
+          <p>One effect at a time is the real job for a good while.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── DIRECTION C ─────────────── -->
+    <section data-anchor-id="wf-c">
+      <h2>
+        C — Stage Hero
+        <span style="font-weight: 400; color: var(--muted, #8a8172)"
+          >(demo-first)</span
+        >
+      </h2>
+      <p>
+        The effect fills the screen. Everyday controls live in a bottom dock;
+        the deep dials slide in from the right only when you hit <em>Tune</em>.
+        The effect is the star — best for showing a stranger or
+        screen-recording.
+      </p>
+
+      <div class="wf">
+        <div class="wf-bar">
+          <span class="wf-dot"></span><span class="wf-dot"></span
+          ><span class="wf-dot"></span
+          ><span style="margin-left: 0.4rem">surface-fx · disc</span>
+        </div>
+        <div
+          class="wf-canvas"
+          style="grid-template-columns: 1fr 168px; grid-template-rows: 1fr 54px"
+        >
+          <div class="wf-region stage" style="grid-column: 1; grid-row: 1">
+            <span class="wf-label">Stage preview — full bleed</span>
+          </div>
+          <div
+            class="wf-region solid"
+            style="grid-column: 2; grid-row: 1 / 3; align-items: stretch"
+          >
+            <span class="wf-label">Tune drawer</span>
+            <div class="wf-accordion">
+              <div class="wf-acc open">Form</div>
+              <div class="wf-slider"></div>
+              <div class="wf-acc">Visibility</div>
+              <div class="wf-acc">Color</div>
+            </div>
+            <div class="wf-btn" style="text-align: center; margin-top: auto">
+              Bake
+            </div>
+          </div>
+          <div
+            class="wf-region"
+            style="
+              grid-column: 1;
+              grid-row: 2;
+              flex-direction: row;
+              align-items: center;
+            "
+          >
+            <div class="wf-strip">
+              <span class="wf-chip on">Disc</span
+              ><span class="wf-chip">Sheet</span
+              ><span class="wf-chip">Halftone</span>
+              <span
+                style="width: 1px; height: 16px; background: #cfc6b4"
+              ></span>
+              <span class="wf-chip">Light</span
+              ><span class="wf-chip on">Dark</span
+              ><span class="wf-chip">Bg</span>
+              <span style="margin-left: auto"></span>
+              <span class="wf-btn ghost">Tune →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wf-meta">
+        <div class="cell">
+          <h4>Optimizes for</h4>
+          <p>
+            The tool-first hero — demoable, recordable, portfolio-ready in one
+            glance.
+          </p>
+        </div>
+        <div class="cell">
+          <h4>Trade-off</h4>
+          <p>
+            Deep dials hidden behind a drawer; reads less like a "pro"
+            workbench.
+          </p>
+        </div>
+        <div class="cell">
+          <h4>Best when</h4>
+          <p>
+            First impression &amp; shareability matter more than dense control.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── DIRECTION D ─────────────── -->
+    <section data-anchor-id="wf-d">
+      <h2>
+        D — Timeline / Motion
+        <span style="font-weight: 400; color: var(--muted, #8a8172)"
+          >(After Effects / Rive)</span
+        >
+      </h2>
+      <p>
+        Time becomes first-class. Same layers + inspector, but a bottom track
+        shows each layer's <em>trigger</em> and <em>envelope</em>. Because
+        surface-fx motion is reactive — hover, pointer, arrival — the track is a
+        <strong>trigger + envelope editor</strong> with a preview playhead, not
+        a keyframe timeline.
+      </p>
+
+      <div class="wf">
+        <div class="wf-bar">
+          <span class="wf-dot"></span><span class="wf-dot"></span
+          ><span class="wf-dot"></span
+          ><span style="margin-left: 0.4rem">surface-fx · disc · timeline</span>
+        </div>
+        <div
+          class="wf-canvas"
+          style="
+            grid-template-columns: 96px 1fr 200px;
+            grid-template-rows: 1fr 98px;
+          "
+        >
+          <div class="wf-region solid" style="grid-column: 1; grid-row: 1">
+            <span class="wf-label">Layers</span>
+            <div class="wf-layers">
+              <div class="wf-layer sel">Dither</div>
+              <div class="wf-layer">Ripple</div>
+              <div class="wf-layer">Texture</div>
+            </div>
+          </div>
+          <div class="wf-region stage" style="grid-column: 2; grid-row: 1">
+            <span class="wf-label">Stage preview</span>
+          </div>
+          <div class="wf-region solid" style="grid-column: 3; grid-row: 1">
+            <span class="wf-label">Inspector</span>
+            <div class="wf-accordion">
+              <div class="wf-acc open">Form</div>
+              <div class="wf-slider"></div>
+              <div class="wf-acc">Visibility</div>
+              <div class="wf-acc">Color</div>
+            </div>
+          </div>
+          <div
+            class="wf-region"
+            style="grid-column: 1 / 4; grid-row: 2; position: relative"
+          >
+            <span class="wf-label">Timeline — triggers &amp; envelopes</span>
+            <div style="display: flex; flex-direction: column; gap: 0.3rem">
+              <div style="display: flex; align-items: center; gap: 0.5rem">
+                <span class="wf-chip" style="width: 52px; text-align: center"
+                  >Dither</span
+                >
+                <span class="wf-chip on">hover</span>
+                <div
+                  style="
+                    flex: 1;
+                    height: 20px;
+                    border: 1px solid var(--wf-line);
+                    border-radius: 4px;
+                    background: #f2eee2;
+                    overflow: hidden;
+                  "
+                >
+                  <svg
+                    viewBox="0 0 100 20"
+                    preserveAspectRatio="none"
+                    style="width: 100%; height: 100%"
+                  >
+                    <path
+                      d="M0,18 L18,3 L55,9 L100,17"
+                      fill="none"
+                      stroke="#a8761a"
+                      stroke-width="1.4"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem">
+                <span class="wf-chip" style="width: 52px; text-align: center"
+                  >Ripple</span
+                >
+                <span class="wf-chip">pointer</span>
+                <div
+                  style="
+                    flex: 1;
+                    height: 20px;
+                    border: 1px solid var(--wf-line);
+                    border-radius: 4px;
+                    background: #f2eee2;
+                    overflow: hidden;
+                  "
+                >
+                  <svg
+                    viewBox="0 0 100 20"
+                    preserveAspectRatio="none"
+                    style="width: 100%; height: 100%"
+                  >
+                    <path
+                      d="M0,17 L10,5 L30,12 L55,7 L80,14 L100,16"
+                      fill="none"
+                      stroke="#b9b0a0"
+                      stroke-width="1.4"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 0.5rem">
+                <span class="wf-chip" style="width: 52px; text-align: center"
+                  >Texture</span
+                >
+                <span class="wf-chip">arrival</span>
+                <div
+                  style="
+                    flex: 1;
+                    height: 20px;
+                    border: 1px solid var(--wf-line);
+                    border-radius: 4px;
+                    background: #f2eee2;
+                    overflow: hidden;
+                  "
+                >
+                  <svg
+                    viewBox="0 0 100 20"
+                    preserveAspectRatio="none"
+                    style="width: 100%; height: 100%"
+                  >
+                    <path
+                      d="M0,18 L8,4 L100,4"
+                      fill="none"
+                      stroke="#b9b0a0"
+                      stroke-width="1.4"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div
+              style="
+                position: absolute;
+                top: 6px;
+                bottom: 6px;
+                left: 34%;
+                width: 1.5px;
+                background: var(--wf-accent);
+              "
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wf-meta">
+        <div class="cell">
+          <h4>Optimizes for</h4>
+          <p>
+            Tuning <em>when &amp; how</em> the effect fires, not just its static
+            look.
+          </p>
+        </div>
+        <div class="cell">
+          <h4>Trade-off</h4>
+          <p>
+            Most complex — time is a whole new dimension to hold in one screen.
+          </p>
+        </div>
+        <div class="cell">
+          <h4>Best when</h4>
+          <p>
+            Motion &amp; trigger behavior matter as much as the material itself.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── DIRECTION E ─────────────── -->
+    <section data-anchor-id="wf-e">
+      <h2>
+        E — Stage Hero + Layers
+        <span style="font-weight: 400; color: var(--muted, #8a8172)"
+          >(C, evolved)</span
+        >
+      </h2>
+      <p>
+        Keeps C's full-bleed hero, but a slim
+        <strong>collapsed layer rail</strong> lives on the left edge — icon dots
+        that expand on click. Answers "how do layers fit into C" without giving
+        up the clean stage.
+      </p>
+
+      <div class="wf">
+        <div class="wf-bar">
+          <span class="wf-dot"></span><span class="wf-dot"></span
+          ><span class="wf-dot"></span
+          ><span style="margin-left: 0.4rem">surface-fx · disc</span>
+        </div>
+        <div
+          class="wf-canvas"
+          style="
+            grid-template-columns: 44px 1fr 168px;
+            grid-template-rows: 1fr 54px;
+          "
+        >
+          <div
+            class="wf-region solid"
+            style="
+              grid-column: 1;
+              grid-row: 1 / 3;
+              align-items: center;
+              padding: 0.5rem 0.3rem;
+            "
+          >
+            <span
+              class="wf-label"
+              style="
+                writing-mode: vertical-rl;
+                transform: rotate(180deg);
+                letter-spacing: 0.14em;
+              "
+              >Layers</span
+            >
+            <div
+              style="
+                display: flex;
+                flex-direction: column;
+                gap: 0.4rem;
+                margin-top: 0.3rem;
+              "
+            >
+              <span
+                style="
+                  width: 22px;
+                  height: 22px;
+                  border-radius: 5px;
+                  background: #fff;
+                  border: 1px solid var(--wf-accent);
+                "
+              ></span>
+              <span
+                style="
+                  width: 22px;
+                  height: 22px;
+                  border-radius: 5px;
+                  background: #f2eee2;
+                  border: 1px solid var(--wf-line);
+                "
+              ></span>
+              <span
+                style="
+                  width: 22px;
+                  height: 22px;
+                  border-radius: 5px;
+                  background: #f2eee2;
+                  border: 1px solid var(--wf-line);
+                "
+              ></span>
+            </div>
+          </div>
+          <div class="wf-region stage" style="grid-column: 2; grid-row: 1">
+            <span class="wf-label">Stage preview — full bleed</span>
+          </div>
+          <div
+            class="wf-region solid"
+            style="grid-column: 3; grid-row: 1 / 3; align-items: stretch"
+          >
+            <span class="wf-label">Tune drawer</span>
+            <div class="wf-accordion">
+              <div class="wf-acc open">Form</div>
+              <div class="wf-slider"></div>
+              <div class="wf-acc">Visibility</div>
+              <div class="wf-acc">Color</div>
+            </div>
+            <div class="wf-btn" style="text-align: center; margin-top: auto">
+              Bake
+            </div>
+          </div>
+          <div
+            class="wf-region"
+            style="
+              grid-column: 2;
+              grid-row: 2;
+              flex-direction: row;
+              align-items: center;
+            "
+          >
+            <div class="wf-strip">
+              <span class="wf-chip on">Disc</span
+              ><span class="wf-chip">Sheet</span
+              ><span class="wf-chip">Halftone</span>
+              <span
+                style="width: 1px; height: 16px; background: #cfc6b4"
+              ></span>
+              <span class="wf-chip">Light</span
+              ><span class="wf-chip on">Dark</span
+              ><span class="wf-chip">Bg</span>
+              <span style="margin-left: auto"></span>
+              <span class="wf-btn ghost">Tune →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wf-meta">
+        <div class="cell">
+          <h4>Optimizes for</h4>
+          <p>C's shareable hero <em>plus</em> a real home for a layer stack.</p>
+        </div>
+        <div class="cell">
+          <h4>Trade-off</h4>
+          <p>
+            Two collapsible edges; the rail nibbles at the "clean stage" feel.
+          </p>
+        </div>
+        <div class="cell">
+          <h4>Best when</h4>
+          <p>
+            You want demo energy and multi-layer without the full Figma frame.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── DIRECTION F ─────────────── -->
+    <section data-anchor-id="wf-f">
+      <h2>
+        F — Bottom Bar Only
+        <span style="font-weight: 400; color: var(--muted, #8a8172)"
+          >(no side panels — the curiosity)</span
+        >
+      </h2>
+      <p>
+        Everything collapses into one bottom bar; the stage owns the whole
+        screen. Dials live in a horizontal, scrolling tray. Honest read: it's
+        clean and touch-friendly, but it hits a wall fast — drawn here with
+        where it breaks called out.
+      </p>
+
+      <div class="wf">
+        <div class="wf-bar">
+          <span class="wf-dot"></span><span class="wf-dot"></span
+          ><span class="wf-dot"></span
+          ><span style="margin-left: 0.4rem">surface-fx · disc</span>
+        </div>
+        <div
+          class="wf-canvas"
+          style="grid-template-columns: 1fr; grid-template-rows: 1fr 72px"
+        >
+          <div class="wf-region stage" style="grid-row: 1">
+            <span class="wf-label">Stage preview — full screen</span>
+          </div>
+          <div
+            class="wf-region solid"
+            style="
+              grid-row: 2;
+              flex-direction: row;
+              align-items: center;
+              gap: 0.6rem;
+              overflow-x: auto;
+            "
+          >
+            <div class="wf-strip">
+              <span class="wf-chip on">Disc</span
+              ><span class="wf-chip">Sheet</span
+              ><span class="wf-chip">Half</span>
+              <span
+                style="width: 1px; height: 18px; background: #cfc6b4"
+              ></span>
+            </div>
+            <div
+              style="display: flex; align-items: center; gap: 0.4rem; flex: 1"
+            >
+              <span class="wf-chip">shape</span>
+              <div class="wf-slider" style="width: 44px; margin: 0"></div>
+              <span class="wf-chip">density</span>
+              <div class="wf-slider" style="width: 44px; margin: 0"></div>
+              <span class="wf-chip">feather</span>
+              <div class="wf-slider" style="width: 44px; margin: 0"></div>
+              <span
+                class="wf-chip"
+                style="color: #b04a3a; border-color: #d8a99f"
+                >…more →</span
+              >
+            </div>
+            <div class="wf-btn">Bake</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wf-meta">
+        <div class="cell">
+          <h4>Optimizes for</h4>
+          <p>Maximum stage, single control locus, touch / mobile.</p>
+        </div>
+        <div class="cell">
+          <h4>Where it breaks</h4>
+          <p>
+            Horizontal-only cramps past ~6 dials; layers have
+            <em>nowhere</em> to live.
+          </p>
+        </div>
+        <div class="cell">
+          <h4>Best when</h4>
+          <p>A stripped, preset-leaning quick-tune — not deep work.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────── INSPIRATION ─────────────── -->
+    <section data-anchor-id="wf-inspiration">
+      <h2>Inspiration board — tools worth stealing from</h2>
+      <p>
+        Where each direction's DNA comes from, plus one wildcard we haven't
+        drawn.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Tool</th>
+            <th>What we borrow</th>
+            <th>Shows up in</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>After Effects / Rive</td>
+            <td>
+              Layer stack + timeline; thinking in triggers &amp; envelopes
+            </td>
+            <td>D</td>
+          </tr>
+          <tr>
+            <td>Figma / Spline</td>
+            <td>Layers left · canvas center · inspector right</td>
+            <td>A</td>
+          </tr>
+          <tr>
+            <td>Ableton (device rack)</td>
+            <td>Horizontal chained modules + macro knobs</td>
+            <td>F, done better</td>
+          </tr>
+          <tr>
+            <td>Tweakpane / dat.GUI</td>
+            <td>Compact folder-based dial panel — folders = our accordions</td>
+            <td>B, E, drawers</td>
+          </tr>
+          <tr>
+            <td>VSCO / Instagram</td>
+            <td>Preset-first, one slider, minimal chrome</td>
+            <td>C, F</td>
+          </tr>
+          <tr>
+            <td>Blender / Origami <em>(nodes)</em></td>
+            <td>Layers as connected nodes — a graph, not a stack</td>
+            <td>wildcard — undrawn</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="font-size: 0.9rem; color: var(--muted, #8a8172)">
+        The node-graph wildcard (G) is a real fork if surface-fx ever composes
+        effects that feed each other. Say the word and I'll draw it.
+      </p>
+    </section>
+
+    <section data-anchor-id="wf-react">
+      <h2>How to react</h2>
+      <p>
+        Click any region or select text to comment. The useful signals for this
+        pass:
+      </p>
+      <ul>
+        <li>
+          Which direction feels right as the
+          <strong>starting skeleton</strong> — or a hybrid (e.g. B now, A's
+          layers rail later)?
+        </li>
+        <li>
+          Anything <strong>missing</strong> from the frame — a control, a state,
+          a panel?
+        </li>
+        <li>
+          Does <strong>Color</strong> want to stay one accordion, or does the
+          layer-stack idea change where it sits?
+        </li>
+        <li>
+          Is <strong>time / motion</strong> (D) core enough to fold into the
+          winner, or a later mode?
+        </li>
+        <li>
+          Want the <strong>node-graph wildcard (G)</strong> drawn, or is it a
+          bridge too far?
+        </li>
+      </ul>
+      <p>
+        Pick a direction and I'll take it up to a tighter mid-fi pass; the rest
+        stay parked in the planning set.
+      </p>
+    </section>
+  </body>
+</html>
