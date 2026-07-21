@@ -458,54 +458,693 @@
         color: var(--text-dimmer);
       }
 
-      /* ── Stage mode — a full-viewport canvas host that self-renders a sample
-     via window.SurfaceFxStage (standalone.js), no dev server involved. See
-     the boot-time "?stage=1[&target=<id>]" script below. Sibling of #app,
-     not nested inside it — #app is hidden outright in Stage mode. */
-      #stage-wrap {
+      /* ── Stage mode (D2 two-panel tuner layout) — a full-viewport host
+     that self-renders + tunes a sample via window.SurfaceFxStage
+     (standalone.js), no dev server involved. See the boot-time
+     "?stage=1[&target=<id>]" script below. Sibling of #app, not nested
+     inside it — #app is hidden outright in Stage mode.
+
+     Palette below is transcribed verbatim from
+     docs/plans/tuner-mockup-D2.html and scoped to the #stage-d2 selector
+     (NOT :root) so it can never collide with #app's own --panel/--border/
+     --text tokens defined above. */
+      #stage-d2 {
         display: none;
         position: fixed;
         inset: 0;
         width: 100%;
         height: 100%;
-        overflow: auto;
-        background: #000;
+        overflow: hidden;
+        --paper: #f3eee4;
+        --panel: #fbf8f1;
+        --panel-2: #efe8da;
+        --ink: #2b2620;
+        --ink-soft: #6e655a;
+        --ink-faint: #a79c8c;
+        --line: #ddd3c1;
+        --line-soft: #e7dece;
+        --amber: #c77b3b;
+        --amber-soft: #e7c79e;
+        --amber-wash: #f6e6d2;
+        --good: #5c8a5a;
+        --stage: #ece5d7;
+        --stage-ink: #0f0d0b;
+        --shadow:
+          0 1px 0 rgba(43, 38, 32, 0.04),
+          0 8px 24px -14px rgba(43, 38, 32, 0.28);
+        --r: 10px;
+        --r-sm: 7px;
+        --d2-mono: ui-monospace, "SF Mono", Menlo, monospace;
+        --d2-sans:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        font-family: var(--d2-sans);
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--ink);
+        background: var(--paper);
+        -webkit-font-smoothing: antialiased;
+      }
+      @media (prefers-color-scheme: dark) {
+        #stage-d2 {
+          --paper: #181512;
+          --panel: #211d18;
+          --panel-2: #1c1813;
+          --ink: #efe7da;
+          --ink-soft: #a99e8e;
+          --ink-faint: #6b6155;
+          --line: #332d25;
+          --line-soft: #2a251f;
+          --amber: #d98f4e;
+          --amber-soft: #6b4a2a;
+          --amber-wash: #2a2018;
+          --stage: #12100d;
+          --stage-ink: #f3eee4;
+          --shadow:
+            0 1px 0 rgba(0, 0, 0, 0.2), 0 10px 30px -16px rgba(0, 0, 0, 0.7);
+        }
       }
 
-      /* ── Stage control strip — Stage mode only. Floats over the canvas,
-     reusing the same dark instrument chrome (--panel/--panel-raised) and
-     .segmented group style as #app. Guarded to stage mode by the boot
-     script below (never inserted/shown when #app mode is active). */
-      #stage-controls {
-        display: none;
-        position: fixed;
-        left: 50%;
-        bottom: 20px;
-        transform: translateX(-50%);
-        z-index: 10;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 10px;
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 6px;
-        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+      #stage-d2 .app {
+        height: 100%;
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        grid-template-rows: 1fr 244px;
+        grid-template-areas: "stage inspect" "motion motion";
       }
-      #stage-controls .stage-control-group {
+
+      /* ---------- STAGE (the real WebGL canvas host lives at #stage-wrap,
+     mounted by window.SurfaceFxStage.mount()) ---------- */
+      #stage-d2 .stage {
+        grid-area: stage;
+        position: relative;
+        background: var(--stage);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+      #stage-wrap {
+        width: 100%;
+        height: 100%;
+      }
+      #stage-d2 .stage-tools {
+        position: absolute;
+        top: 12px;
+        left: 14px;
+        display: flex;
+        gap: 6px;
+        z-index: 2;
+      }
+      #stage-d2 .stage-tools .tool {
+        width: 30px;
+        height: 30px;
+        border-radius: var(--r-sm);
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--ink-soft);
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        font-size: 14px;
+        box-shadow: var(--shadow);
+      }
+      #stage-d2 .stage-tools .tool.settings {
+        margin-left: 2px;
+      }
+      #stage-d2 .stage-meta {
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        font-family: var(--d2-mono);
+        font-size: 11px;
+        color: var(--ink-faint);
+        z-index: 2;
+      }
+      #stage-d2 .stage-caption {
+        position: absolute;
+        bottom: 12px;
+        left: 14px;
+        font-size: 11px;
+        color: var(--ink-faint);
+        font-style: italic;
+        z-index: 2;
+      }
+
+      /* ---------- RIGHT: inspector w/ tabs ---------- */
+      #stage-d2 .inspect {
+        grid-area: inspect;
+        border-left: 1px solid var(--line);
+        background: var(--panel);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      #stage-d2 .tabs {
+        display: flex;
+        border-bottom: 1px solid var(--line);
+        padding: 0 8px;
+        gap: 2px;
+        flex: none;
+      }
+      #stage-d2 .tabs button {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 560;
+        border: 0;
+        background: transparent;
+        color: var(--ink-faint);
+        padding: 11px 12px 9px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+      }
+      #stage-d2 .tabs button.on {
+        color: var(--ink);
+        border-bottom-color: var(--amber);
+      }
+      #stage-d2 .tab-body {
+        flex: 1;
+        overflow-y: auto;
+      }
+      #stage-d2 .tab-body[hidden] {
+        display: none;
+      }
+
+      #stage-d2 .crumb {
+        padding: 9px 14px 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--d2-mono);
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        cursor: pointer;
+      }
+      #stage-d2 .crumb b {
+        color: var(--ink-soft);
+        font-weight: 600;
+      }
+      #stage-d2 .crumb .go {
+        margin-left: 2px;
+        color: var(--amber);
+      }
+      #stage-d2 .insp-head {
+        padding: 6px 14px 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      #stage-d2 .insp-head .swatch {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+      }
+      #stage-d2 .insp-head b {
+        font-size: 13px;
+        font-weight: 620;
+      }
+      #stage-d2 .insp-head .look-tag {
+        margin-left: auto;
+        font-size: 9.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--good);
+        background: color-mix(in srgb, var(--good) 12%, transparent);
+        padding: 2px 7px;
+        border-radius: 20px;
+        font-weight: 600;
+      }
+      #stage-d2 .swatch.sw-texture {
+        background: conic-gradient(
+          var(--amber) 0 25%,
+          transparent 0 50%,
+          var(--amber) 0 75%,
+          transparent 0
+        );
+        background-size: 6px 6px;
+      }
+      #stage-d2 .swatch.sw-dither {
+        background: repeating-linear-gradient(
+          0deg,
+          var(--ink) 0 1.5px,
+          transparent 1.5px 3px
+        );
+      }
+      #stage-d2 .swatch.sw-ripple {
+        background: radial-gradient(
+          circle at 50% 50%,
+          transparent 30%,
+          var(--amber) 31% 40%,
+          transparent 41%
+        );
+      }
+
+      #stage-d2 .acc {
+        border-bottom: 1px solid var(--line-soft);
+      }
+      #stage-d2 .acc > summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 12px;
+        user-select: none;
+      }
+      #stage-d2 .acc > summary::-webkit-details-marker {
+        display: none;
+      }
+      #stage-d2 .acc > summary .chev {
+        color: var(--ink-faint);
+        font-size: 10px;
+        transition: transform 0.15s;
+        margin-left: auto;
+      }
+      #stage-d2 .acc[open] > summary .chev {
+        transform: rotate(90deg);
+      }
+      #stage-d2 .acc > summary .grp-sub {
+        color: var(--ink-faint);
+        font-weight: 400;
+        font-size: 10.5px;
+      }
+      #stage-d2 .acc-body {
+        padding: 2px 14px 12px;
+      }
+      #stage-d2 .dial {
+        padding: 7px 0;
+      }
+      #stage-d2 .dial .drow {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 5px;
+      }
+      #stage-d2 .dial .dname {
+        font-size: 12px;
+        font-weight: 520;
+      }
+      #stage-d2 .dial .dval {
+        font-family: var(--d2-mono);
+        font-size: 11px;
+        color: var(--amber);
+        font-weight: 500;
+      }
+      #stage-d2 .dial .key {
+        font-family: var(--d2-mono);
+        font-size: 9px;
+        color: var(--ink-faint);
+        display: block;
+        margin-top: 3px;
+        letter-spacing: -0.02em;
+      }
+      #stage-d2 .dial .key em {
+        color: var(--amber);
+        font-style: normal;
+        opacity: 0.8;
+      }
+      /* Native range input, styled to match the mockup's .track/.knob look
+     — real slider, not a decorative bar, since it must drive bridgeSet(). */
+      #stage-d2 .dial .rng {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 4px;
+        border-radius: 3px;
+        background: var(--panel-2);
+        outline: none;
+        margin: 2px 0;
+      }
+      #stage-d2 .dial .rng::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: var(--panel);
+        border: 1.5px solid var(--amber);
+        box-shadow: var(--shadow);
+        cursor: pointer;
+        margin-top: -4.5px;
+      }
+      #stage-d2 .dial .rng::-moz-range-thumb {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: var(--panel);
+        border: 1.5px solid var(--amber);
+        box-shadow: var(--shadow);
+        cursor: pointer;
+      }
+      #stage-d2 .dial .rng::-moz-range-track {
+        height: 4px;
+        border-radius: 3px;
+        background: var(--panel-2);
+      }
+      #stage-d2 .chips {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      #stage-d2 .chip {
+        font-size: 11px;
+        padding: 4px 9px;
+        border-radius: 20px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--ink-soft);
+        cursor: pointer;
+      }
+      #stage-d2 .chip.on {
+        background: var(--amber);
+        color: #fff;
+        border-color: var(--amber);
+      }
+      #stage-d2 .swatchrow {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      #stage-d2 .swatchrow .sc {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        cursor: pointer;
+      }
+      #stage-d2 .swatchrow .sc.on {
+        outline: 2px solid var(--amber);
+        outline-offset: 1px;
+      }
+      #stage-d2 .disclosure {
+        margin: 4px 14px 14px;
+        font-size: 10.5px;
+        color: var(--ink-faint);
         display: flex;
         align-items: center;
         gap: 6px;
       }
-      #stage-controls .stage-control-label {
-        color: var(--text-dimmer);
+
+      /* Setup tab */
+      #stage-d2 .setup {
+        padding: 14px;
+      }
+      #stage-d2 .setup .field {
+        margin-bottom: 16px;
+      }
+      #stage-d2 .setup .field > label {
+        display: block;
         font-size: 10px;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.07em;
+        color: var(--ink-faint);
+        font-weight: 600;
+        margin-bottom: 6px;
       }
-      #stage-controls .stage-control-divider {
-        width: 1px;
+      #stage-d2 .seg {
+        display: inline-flex;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: var(--r-sm);
+        padding: 2px;
+        width: 100%;
+      }
+      #stage-d2 .seg button {
+        flex: 1;
+        font: inherit;
+        font-size: 12px;
+        border: 0;
+        background: transparent;
+        color: var(--ink-soft);
+        padding: 5px 8px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      #stage-d2 .seg button.on {
+        background: var(--panel);
+        color: var(--ink);
+        box-shadow: var(--shadow);
+        font-weight: 560;
+      }
+      #stage-d2 .seg.amber button.on {
+        background: var(--amber);
+        color: #fff;
+      }
+      #stage-d2 .setup .divide {
+        height: 1px;
+        background: var(--line-soft);
+        margin: 4px 0 16px;
+      }
+      #stage-d2 .bake {
+        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: var(--ink);
+        color: var(--paper);
+        border: 0;
+        border-radius: var(--r-sm);
+        padding: 11px 14px;
+        font: inherit;
+        font-weight: 560;
+        font-size: 13px;
+        cursor: pointer;
+        box-shadow: var(--shadow);
+      }
+      #stage-d2 .setup .bake-note {
+        margin: 8px 2px 0;
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        line-height: 1.5;
+      }
+      #stage-d2 .setup .bake-note code {
+        font-family: var(--d2-mono);
+        font-size: 10px;
+        color: var(--ink-soft);
+      }
+
+      /* ---------- BOTTOM: timeline (layers-as-tracks + envelope) ---------- */
+      #stage-d2 .motion {
+        grid-area: motion;
+        border-top: 1px solid var(--line);
+        background: var(--panel-2);
+        display: grid;
+        grid-template-columns: 236px 1fr 176px;
+        overflow: hidden;
+      }
+
+      #stage-d2 .tracks {
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      #stage-d2 .tracks .th {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 9px 12px 7px;
+        flex: none;
+      }
+      #stage-d2 .tracks .th h3 {
+        margin: 0;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--ink-faint);
+        font-weight: 600;
+      }
+      #stage-d2 .tracks .th .add {
+        width: 18px;
         height: 18px;
-        background: var(--border);
+        border-radius: 5px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--ink-soft);
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1;
+        display: grid;
+        place-items: center;
+      }
+      #stage-d2 .trk {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+        border-left: 2px solid transparent;
+      }
+      #stage-d2 .trk.sel {
+        background: var(--panel);
+        border-left-color: var(--amber);
+      }
+      #stage-d2 .trk.inert {
+        opacity: 0.55;
+      }
+      #stage-d2 .trk .swatch {
+        width: 15px;
+        height: 15px;
+        border-radius: 4px;
+        flex: none;
+      }
+      #stage-d2 .trk .tn {
+        font-weight: 540;
+        font-size: 12.5px;
+        flex: 1;
+      }
+      #stage-d2 .trk .eye {
+        color: var(--ink-faint);
+        font-size: 11px;
+      }
+      #stage-d2 .trk .tpill {
+        font-family: var(--d2-mono);
+        font-size: 9.5px;
+        color: var(--amber);
+        background: var(--amber-wash);
+        padding: 1px 6px;
+        border-radius: 20px;
+      }
+
+      #stage-d2 .envwrap {
+        padding: 11px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        min-width: 0;
+      }
+      #stage-d2 .envhead {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      #stage-d2 .envhead h3 {
+        margin: 0;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--ink-faint);
+        font-weight: 600;
+      }
+      #stage-d2 .envhead .mtag {
+        font-size: 9.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--amber);
+        background: var(--amber-wash);
+        padding: 2px 7px;
+        border-radius: 20px;
+        font-weight: 600;
+      }
+      #stage-d2 .play {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--amber);
+        color: #fff;
+        border: 0;
+        border-radius: var(--r-sm);
+        padding: 6px 13px;
+        font: inherit;
+        font-weight: 560;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      #stage-d2 .trig-row {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      #stage-d2 .trig-row .tl {
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      #stage-d2 .env {
+        flex: 1;
+        position: relative;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--r-sm);
+        overflow: hidden;
+        min-height: 74px;
+      }
+      #stage-d2 .env svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      #stage-d2 .playhead {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--amber);
+        left: 8%;
+        box-shadow: 0 0 8px var(--amber);
+        opacity: 0.9;
+      }
+      #stage-d2 .env-axis {
+        position: absolute;
+        bottom: 3px;
+        left: 8px;
+        right: 8px;
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--d2-mono);
+        font-size: 9px;
+        color: var(--ink-faint);
+        pointer-events: none;
+      }
+
+      #stage-d2 .timing {
+        border-left: 1px solid var(--line);
+        padding: 11px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      #stage-d2 .timing h4 {
+        margin: 0 0 2px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--ink-faint);
+        font-weight: 600;
+      }
+      #stage-d2 .readout {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 12px;
+      }
+      #stage-d2 .readout .rk {
+        color: var(--ink-soft);
+      }
+      #stage-d2 .readout .rv {
+        font-family: var(--d2-mono);
+        font-size: 11px;
+        color: var(--ink);
+        font-weight: 500;
+      }
+      #stage-d2 .readout .rv em {
+        color: var(--amber);
+        font-style: normal;
+      }
+      #stage-d2 .rm-note {
+        margin-top: auto;
+        font-size: 10px;
+        color: var(--ink-faint);
+        line-height: 1.5;
+        border-top: 1px solid var(--line-soft);
+        padding-top: 8px;
+      }
+      #stage-d2 .rm-note b {
+        color: var(--good);
       }
     </style>
   </head>
@@ -551,41 +1190,233 @@
       </div>
     </div>
 
-    <!-- Stage mode host — sibling of #app, hidden unless
+    <!-- Stage mode (D2 two-panel tuner) — sibling of #app, hidden unless
          "?stage=1[&target=<id>]" is present (see the boot-time script
-         below). window.SurfaceFxStage.mount() fills this in. -->
-    <div id="stage-wrap"></div>
-
-    <!-- Stage mode control strip — sample/theme/background, sibling of
-         #stage-wrap, hidden unless "?stage=1[&target=<id>]" is present (see
-         the boot-time script below, which builds its buttons from
-         window.SurfaceFxStage.samples and sets display:flex). Never shown
-         in #app (iframe-bridge) mode. -->
-    <div id="stage-controls">
-      <div class="stage-control-group" id="stage-sample-group">
-        <span class="stage-control-label">Sample</span>
-        <div
-          class="segmented"
-          id="stage-sample-segmented"
-          data-sample-group
-        ></div>
-      </div>
-      <div class="stage-control-divider"></div>
-      <div class="stage-control-group">
-        <span class="stage-control-label">Theme</span>
-        <div class="segmented" data-theme-group>
-          <button data-theme="light">Light</button>
-          <button data-theme="dark">Dark</button>
+         below). Layout mirrors docs/plans/tuner-mockup-D2.html exactly:
+         stage (real canvas via #stage-wrap) + tabbed inspector (Look/Setup)
+         + full-width timeline. window.SurfaceFxStage.mount() fills
+         #stage-wrap; initD2Stage() (boot-time script below) builds and
+         wires the rest. -->
+    <div id="stage-d2">
+      <div class="app">
+        <!-- ===== STAGE — the real WebGL surface, mounted by
+             window.SurfaceFxStage.mount(stageWrap) ===== -->
+        <div class="stage">
+          <div class="stage-tools">
+            <span class="tool" title="Pan">✋</span>
+            <span class="tool" title="Zoom">⌕</span>
+            <span
+              class="tool settings"
+              id="d2-gear"
+              title="Stage settings — backdrop, grid, zoom"
+              >⚙</span
+            >
+          </div>
+          <div class="stage-meta" id="d2-stage-meta">disc · light</div>
+          <div id="stage-wrap"></div>
+          <div class="stage-caption">
+            Drag a Look dial — the surface above re-renders live.
+          </div>
         </div>
-      </div>
-      <div class="stage-control-divider"></div>
-      <div class="stage-control-group">
-        <span class="stage-control-label">Background</span>
-        <div class="segmented" data-bg-group>
-          <button data-bg="paper">Paper</button>
-          <button data-bg="white">White</button>
-          <button data-bg="checker">Checker</button>
-          <button data-bg="dark">Dark</button>
+
+        <!-- ===== RIGHT: inspector, tabbed ===== -->
+        <div class="inspect">
+          <div class="tabs">
+            <button class="on" data-tab="look">Look</button>
+            <button data-tab="setup">Setup</button>
+          </div>
+
+          <!-- LOOK — the live Texture dials (Wave this: disc surface only) -->
+          <div class="tab-body" id="d2-tab-look">
+            <div class="crumb" id="d2-crumb">
+              <span>editing</span><b id="d2-crumb-target">disc · light</b
+              ><span class="go">change ›</span>
+            </div>
+            <div class="insp-head">
+              <span class="swatch sw-texture"></span><b>Texture</b
+              ><span class="look-tag">Look</span>
+            </div>
+
+            <details class="acc" open>
+              <summary>
+                Form <span class="grp-sub">· shape &amp; pattern</span>
+                <span class="chev">›</span>
+              </summary>
+              <div class="acc-body" id="d2-form-body"></div>
+            </details>
+
+            <details class="acc" open>
+              <summary>
+                Visibility
+                <span class="grp-sub">· density · feather · opacity</span>
+                <span class="chev">›</span>
+              </summary>
+              <div class="acc-body" id="d2-visibility-body"></div>
+            </details>
+
+            <details class="acc" open>
+              <summary>
+                Color <span class="grp-sub">· tint &amp; blend</span>
+                <span class="chev">›</span>
+              </summary>
+              <div class="acc-body" id="d2-color-body"></div>
+            </details>
+          </div>
+
+          <!-- SETUP -->
+          <div class="tab-body" id="d2-tab-setup" hidden>
+            <div class="setup">
+              <div class="field">
+                <label>Surface</label>
+                <div class="seg" id="d2-surface-seg">
+                  <button class="on" data-surface="disc">Disc</button>
+                  <button data-surface="sheet">Sheet</button>
+                </div>
+              </div>
+              <div class="field">
+                <label>Theme</label>
+                <div class="seg amber" id="d2-theme-seg">
+                  <button class="on" data-theme="light">Light</button>
+                  <button data-theme="dark">Dark</button>
+                </div>
+              </div>
+              <div class="field">
+                <label>Backdrop</label>
+                <div class="seg" id="d2-bg-seg">
+                  <button class="on" data-bg="paper">Paper</button>
+                  <button data-bg="white">White</button>
+                  <button data-bg="checker">Checker</button>
+                  <button data-bg="dark">Dark</button>
+                </div>
+              </div>
+              <div class="divide"></div>
+              <button class="bake" id="d2-bake-btn">Bake to site →</button>
+              <p class="bake-note">
+                Writes the tuned values back through the schema store.
+                Non-functional stub this wave.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== BOTTOM: timeline (tracks + envelope + timing) —
+             presentational this wave except track selection; only the
+             Texture track drives the stage above. ===== -->
+        <div class="motion">
+          <div class="tracks">
+            <div class="th">
+              <h3>Layers</h3>
+              <button class="add">+</button>
+            </div>
+            <div class="trk sel" data-track="Texture">
+              <span class="swatch sw-texture"></span
+              ><span class="tn">Texture</span><span class="tpill">arrival</span
+              ><span class="eye">◉</span>
+            </div>
+            <div
+              class="trk inert"
+              data-track="Dither shadow"
+              title="Not yet wired to the live stage"
+            >
+              <span class="swatch sw-dither"></span
+              ><span class="tn">Dither shadow</span
+              ><span class="tpill">hover</span><span class="eye">◉</span>
+            </div>
+            <div
+              class="trk inert"
+              data-track="Ripple"
+              title="Not yet wired to the live stage"
+            >
+              <span class="swatch sw-ripple"></span
+              ><span class="tn">Ripple</span><span class="tpill">pointer</span
+              ><span class="eye">◉</span>
+            </div>
+          </div>
+
+          <div class="envwrap">
+            <div class="envhead">
+              <h3 id="d2-motion-title">Motion — Texture</h3>
+              <span class="mtag">Behavior · reduced-motion aware</span>
+              <button class="play" id="d2-play-btn">▶ Preview</button>
+            </div>
+            <div class="trig-row">
+              <span class="tl">Trigger</span>
+              <div class="seg amber" style="width: auto">
+                <button>Hover</button><button>Pointer</button
+                ><button class="on">Arrival</button><button>Click</button>
+              </div>
+            </div>
+            <div class="env" id="d2-env">
+              <svg viewBox="0 0 400 100" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="d2g" x1="0" y1="0" x2="0" y2="1">
+                    <stop
+                      offset="0"
+                      stop-color="var(--amber)"
+                      stop-opacity=".28"
+                    />
+                    <stop
+                      offset="1"
+                      stop-color="var(--amber)"
+                      stop-opacity="0"
+                    />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M0,95 C40,95 30,12 90,12 L150,12 C230,12 250,88 400,90 L400,100 L0,100 Z"
+                  fill="url(#d2g)"
+                />
+                <path
+                  d="M0,95 C40,95 30,12 90,12 L150,12 C230,12 250,88 400,90"
+                  fill="none"
+                  stroke="var(--amber)"
+                  stroke-width="2"
+                />
+                <circle
+                  cx="90"
+                  cy="12"
+                  r="4"
+                  fill="var(--panel)"
+                  stroke="var(--amber)"
+                  stroke-width="2"
+                />
+                <circle
+                  cx="150"
+                  cy="12"
+                  r="4"
+                  fill="var(--panel)"
+                  stroke="var(--amber)"
+                  stroke-width="2"
+                />
+              </svg>
+              <div class="playhead" id="d2-playhead"></div>
+              <div class="env-axis">
+                <span>attack</span><span>hold</span><span>decay</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="timing">
+            <h4>Timing</h4>
+            <div class="readout">
+              <span class="rk">Attack</span
+              ><span class="rv"><em>120</em>ms</span>
+            </div>
+            <div class="readout">
+              <span class="rk">Hold</span><span class="rv"><em>80</em>ms</span>
+            </div>
+            <div class="readout">
+              <span class="rk">Decay</span
+              ><span class="rv"><em>380</em>ms</span>
+            </div>
+            <div class="readout">
+              <span class="rk">Curve</span><span class="rv">spring</span>
+            </div>
+            <div class="rm-note">
+              <b>Reduced-motion safe.</b> Look params stay; this panel collapses
+              to the resting state when the OS asks for less motion.
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1235,83 +2066,560 @@
             });
         }
 
-        // ── Stage control strip — sample switcher / theme toggle /
-        // background cycle. Stage mode only; called once from the Stage
-        // boot block below after window.SurfaceFxStage.mount(). ───────────
-        function setUpStageControls(initialTarget) {
-          var sampleGroupEl = document.getElementById("stage-sample-segmented");
-          var themeGroupEl = document.querySelector(
-            "#stage-controls [data-theme-group]",
-          );
-          var bgGroupEl = document.querySelector(
-            "#stage-controls [data-bg-group]",
-          );
+        // ── Stage D2 tuner — Look-tab texture dials + Setup tab, wired to
+        // the REAL schema store via window.SurfaceFxStage. Stage mode only;
+        // initD2Stage() is called once from the Stage boot block below
+        // after window.SurfaceFxStage.mount(). This is intentionally a
+        // self-contained implementation (its own d2* state / functions,
+        // not the #app param-tree machinery above) so the existing dev
+        // bridge rendering path above is never touched. ───────────────────
 
-          function setActive(groupEl, selector, value) {
-            var buttons = groupEl.querySelectorAll("button");
-            for (var i = 0; i < buttons.length; i++) {
-              var btn = buttons[i];
-              btn.classList.toggle(
-                "active",
-                btn.getAttribute(selector) === value,
-              );
-            }
-          }
+        // Real registry key -> ParamSpec (populated from bridgeGet("list")
+        // — texture+bloom+feedHover merged, same as the dev bridge).
+        var d2SpecsByKey = {};
+        // Real current values (populated from bridgeGet("snapshot"), then
+        // optimistically updated locally as dials move — same pattern as
+        // queueSet() above, minus the debounce: Stage's bridgeSet is
+        // synchronous/local, no network round trip to coalesce).
+        var d2Params = {};
+        var d2State = { theme: "light", shape: "circle", surface: "disc" };
 
-          // Sample buttons are built from window.SurfaceFxStage.samples
-          // (id/label) rather than hardcoded, so the strip always matches
-          // whatever samples/index.ts defines.
-          window.SurfaceFxStage.samples.forEach(function (sample) {
-            var btn = document.createElement("button");
-            btn.type = "button";
-            btn.textContent = sample.label;
-            btn.setAttribute("data-sample", sample.id);
-            btn.addEventListener("click", function () {
-              var applied = window.SurfaceFxStage.loadSample(sample.id);
-              if (!applied) return;
-              setActive(sampleGroupEl, "data-sample", sample.id);
-              setActive(themeGroupEl, "data-theme", applied.theme);
-              var url = new URL(window.location.href);
-              url.searchParams.set("target", sample.id);
-              window.history.replaceState(null, "", url);
+        // Each shader mode's primary "size" field — drives the Form
+        // accordion's "Pattern scale" dial, whose key depends on whichever
+        // mode Shape is currently set to. Field names/ranges are confirmed
+        // against src/schema/textureTuningRegistry.ts's MODE_FIELD_META.
+        var D2_PRIMARY_SIZE_FIELD = {
+          led: "cellSize",
+          concentric: "ringSpacing",
+          flow: "scale",
+          bayer: "matrixSize",
+          halftone: "cellSize",
+          bluenoise: "scale",
+          scanlines: "lineFreq",
+          crosshatch: "hatchFreq",
+          lego: "studSize",
+        };
+
+        var D2_TINT_SWATCH = {
+          ink: "var(--ink)",
+          accent: "var(--amber)",
+          custom:
+            "conic-gradient(red, orange, yellow, green, blue, violet, red)",
+        };
+
+        function d2CurrentValue(key) {
+          if (d2Params[key] !== undefined) return d2Params[key];
+          var spec = d2SpecsByKey[key];
+          return spec ? spec.default : undefined;
+        }
+
+        function d2SetValue(key, value) {
+          d2Params[key] = value; // optimistic
+          window.SurfaceFxStage.bridgeSet(key, value)
+            .then(function (result) {
+              if (result && result.clamped !== undefined) {
+                d2Params[key] = result.clamped;
+              }
+            })
+            .catch(function (err) {
+              console.error("[stage-d2] bridgeSet failed for " + key, err);
             });
-            sampleGroupEl.appendChild(btn);
+        }
+
+        function d2FmtNum(v) {
+          var n = Number(v);
+          if (!Number.isFinite(n)) return String(v);
+          return String(Math.round(n * 100) / 100);
+        }
+
+        function d2KeyLine(prefix, boldPart, theme) {
+          var span = document.createElement("span");
+          span.className = "key";
+          span.appendChild(document.createTextNode(prefix));
+          var em = document.createElement("em");
+          em.textContent = boldPart;
+          span.appendChild(em);
+          span.appendChild(document.createTextNode("@" + theme));
+          return span;
+        }
+
+        function d2BuildSliderDial(labelText, key, keyPrefix, keyBold) {
+          var theme = key.split("@")[1];
+          var spec = d2SpecsByKey[key];
+          var value = Number(d2CurrentValue(key));
+          var min = spec && spec.min !== undefined ? spec.min : 0;
+          var max = spec && spec.max !== undefined ? spec.max : 1;
+          var step =
+            spec && spec.step !== undefined
+              ? spec.step
+              : (max - min) / 100 || 1;
+          var unit = (spec && spec.unit) || "";
+
+          var dial = document.createElement("div");
+          dial.className = "dial";
+
+          var drow = document.createElement("div");
+          drow.className = "drow";
+          var dname = document.createElement("span");
+          dname.className = "dname";
+          dname.textContent = labelText;
+          var dval = document.createElement("span");
+          dval.className = "dval";
+          drow.appendChild(dname);
+          drow.appendChild(dval);
+          dial.appendChild(drow);
+
+          var range = document.createElement("input");
+          range.type = "range";
+          range.className = "rng";
+          range.min = min;
+          range.max = max;
+          range.step = step;
+          range.value = value;
+
+          function paint(v) {
+            dval.textContent = d2FmtNum(v) + unit;
+            var pct = max > min ? ((Number(v) - min) / (max - min)) * 100 : 0;
+            range.style.background =
+              "linear-gradient(to right, var(--amber) 0%, var(--amber) " +
+              pct +
+              "%, var(--panel-2) " +
+              pct +
+              "%, var(--panel-2) 100%)";
+          }
+          paint(value);
+
+          range.addEventListener("input", function () {
+            paint(range.value);
+            d2SetValue(key, Number(range.value));
           });
 
-          // Theme toggle.
-          var themeButtons = themeGroupEl.querySelectorAll("button");
-          for (var t = 0; t < themeButtons.length; t++) {
-            themeButtons[t].addEventListener("click", function (e) {
-              var theme = e.currentTarget.getAttribute("data-theme");
-              window.SurfaceFxStage.setTheme(theme);
-              setActive(themeGroupEl, "data-theme", theme);
-            });
-          }
+          dial.appendChild(range);
+          dial.appendChild(d2KeyLine(keyPrefix, keyBold, theme));
+          return dial;
+        }
 
-          // Background cycle.
-          var bgButtons = bgGroupEl.querySelectorAll("button");
-          for (var b = 0; b < bgButtons.length; b++) {
-            bgButtons[b].addEventListener("click", function (e) {
-              var mode = e.currentTarget.getAttribute("data-bg");
-              window.SurfaceFxStage.setBackground(mode);
-              setActive(bgGroupEl, "data-bg", mode);
-            });
-          }
+        function d2BuildEnumChipDial(
+          labelText,
+          key,
+          options,
+          value,
+          onSelect,
+          keyPrefix,
+          keyBold,
+        ) {
+          var theme = key.split("@")[1];
+          var dial = document.createElement("div");
+          dial.className = "dial";
 
-          // Initial state: apply the boot-time target explicitly so we get
-          // its {shape, theme} back to sync the sample + theme toggles (the
-          // mount()-internal "disc" fallback doesn't expose a return value
-          // to this scope). Reapplying the already-applied sample is a
-          // harmless no-op redraw.
-          var applied = window.SurfaceFxStage.loadSample(initialTarget);
-          var resolvedId = applied ? initialTarget : "disc";
-          setActive(sampleGroupEl, "data-sample", resolvedId);
-          setActive(
-            themeGroupEl,
-            "data-theme",
-            applied ? applied.theme : "light",
+          var drow = document.createElement("div");
+          drow.className = "drow";
+          var dname = document.createElement("span");
+          dname.className = "dname";
+          dname.textContent = labelText;
+          var dval = document.createElement("span");
+          dval.className = "dval";
+          dval.textContent = value;
+          drow.appendChild(dname);
+          drow.appendChild(dval);
+          dial.appendChild(drow);
+
+          var chips = document.createElement("div");
+          chips.className = "chips";
+          options.forEach(function (opt) {
+            var chip = document.createElement("span");
+            chip.className = "chip" + (opt === value ? " on" : "");
+            chip.textContent = opt;
+            chip.addEventListener("click", function () {
+              onSelect(opt);
+            });
+            chips.appendChild(chip);
+          });
+          dial.appendChild(chips);
+          dial.appendChild(d2KeyLine(keyPrefix, keyBold, theme));
+          return dial;
+        }
+
+        function d2BuildTintDial(key, options, value) {
+          var theme = key.split("@")[1];
+          var dial = document.createElement("div");
+          dial.className = "dial";
+
+          var drow = document.createElement("div");
+          drow.className = "drow";
+          var dname = document.createElement("span");
+          dname.className = "dname";
+          dname.textContent = "Tint";
+          var dval = document.createElement("span");
+          dval.className = "dval";
+          dval.textContent = value;
+          drow.appendChild(dname);
+          drow.appendChild(dval);
+          dial.appendChild(drow);
+
+          var row = document.createElement("div");
+          row.className = "swatchrow";
+          options.forEach(function (opt) {
+            var sc = document.createElement("span");
+            sc.className = "sc" + (opt === value ? " on" : "");
+            sc.style.background = D2_TINT_SWATCH[opt] || "var(--panel-2)";
+            sc.title = opt;
+            sc.addEventListener("click", function () {
+              d2SetValue(key, opt);
+              renderD2LookTab();
+            });
+            row.appendChild(sc);
+          });
+          dial.appendChild(row);
+          dial.appendChild(d2KeyLine("texture.disc.envelope.", "tint", theme));
+          return dial;
+        }
+
+        function d2BuildBlendDial(key, value) {
+          var theme = key.split("@")[1];
+          var dial = document.createElement("div");
+          dial.className = "dial";
+
+          var drow = document.createElement("div");
+          drow.className = "drow";
+          var dname = document.createElement("span");
+          dname.className = "dname";
+          dname.textContent = "Blend mode";
+          var dval = document.createElement("span");
+          dval.className = "dval";
+          dval.textContent = value ? "screen" : "normal";
+          drow.appendChild(dname);
+          drow.appendChild(dval);
+          dial.appendChild(drow);
+
+          var chips = document.createElement("div");
+          chips.className = "chips";
+          [
+            ["screen", true],
+            ["normal", false],
+          ].forEach(function (pair) {
+            var chip = document.createElement("span");
+            chip.className = "chip" + (value === pair[1] ? " on" : "");
+            chip.textContent = pair[0];
+            chip.addEventListener("click", function () {
+              d2SetValue(key, pair[1]);
+              renderD2LookTab();
+            });
+            chips.appendChild(chip);
+          });
+          dial.appendChild(chips);
+          dial.appendChild(
+            d2KeyLine("texture.disc.envelope.", "screenBlend", theme),
           );
-          setActive(bgGroupEl, "data-bg", "paper");
+          return dial;
+        }
+
+        // Rebuilds the whole Look tab for the current d2State.theme — called
+        // on load, whenever a Shape/Tint/Blend chip is clicked (their key
+        // — or the Pattern-scale dial's target key — changes), and whenever
+        // Setup's Theme toggle flips (re-targets every key's "@light"/
+        // "@dark" suffix and reloads values from d2Params for that theme).
+        function renderD2LookTab() {
+          var theme = d2State.theme;
+          var formBody = document.getElementById("d2-form-body");
+          var visBody = document.getElementById("d2-visibility-body");
+          var colorBody = document.getElementById("d2-color-body");
+          formBody.innerHTML = "";
+          visBody.innerHTML = "";
+          colorBody.innerHTML = "";
+
+          // Form — Shape (mode enum)
+          var modeKey = "texture.disc.layer.mode@" + theme;
+          var modeSpec = d2SpecsByKey[modeKey];
+          var modeValue = d2CurrentValue(modeKey);
+          var modeOptions =
+            (modeSpec && modeSpec.options) ||
+            Object.keys(D2_PRIMARY_SIZE_FIELD).concat(["css"]);
+          formBody.appendChild(
+            d2BuildEnumChipDial(
+              "Shape",
+              modeKey,
+              modeOptions,
+              modeValue,
+              function (opt) {
+                d2SetValue(modeKey, opt);
+                renderD2LookTab(); // Pattern scale's key depends on the selected mode
+              },
+              "texture.disc.",
+              "layer.mode",
+            ),
+          );
+
+          // Form — Pattern scale (the selected mode's primary size field)
+          if (modeValue === "css") {
+            var noneDial = document.createElement("div");
+            noneDial.className = "dial";
+            var noneRow = document.createElement("div");
+            noneRow.className = "drow";
+            noneRow.innerHTML =
+              '<span class="dname">Pattern scale</span><span class="dval">—</span>';
+            noneDial.appendChild(noneRow);
+            var noneKey = document.createElement("span");
+            noneKey.className = "key";
+            noneKey.textContent = "css mode has no shader param bag";
+            noneDial.appendChild(noneKey);
+            formBody.appendChild(noneDial);
+          } else {
+            var field = D2_PRIMARY_SIZE_FIELD[modeValue] || "cellSize";
+            var scaleKey =
+              "texture.disc." + modeValue + "." + field + "@" + theme;
+            formBody.appendChild(
+              d2BuildSliderDial(
+                "Pattern scale",
+                scaleKey,
+                "texture.disc.",
+                modeValue + "." + field,
+              ),
+            );
+          }
+
+          // Visibility — envelope reach/fadeSoftness/opacity/innerCutout
+          visBody.appendChild(
+            d2BuildSliderDial(
+              "Density",
+              "texture.disc.envelope.reach@" + theme,
+              "texture.disc.envelope.",
+              "reach",
+            ),
+          );
+          visBody.appendChild(
+            d2BuildSliderDial(
+              "Feather",
+              "texture.disc.envelope.fadeSoftness@" + theme,
+              "texture.disc.envelope.",
+              "fadeSoftness",
+            ),
+          );
+          visBody.appendChild(
+            d2BuildSliderDial(
+              "Opacity",
+              "texture.disc.envelope.opacity@" + theme,
+              "texture.disc.envelope.",
+              "opacity",
+            ),
+          );
+          visBody.appendChild(
+            d2BuildSliderDial(
+              "Inner cutout",
+              "texture.disc.envelope.innerCutout@" + theme,
+              "texture.disc.envelope.",
+              "innerCutout",
+            ),
+          );
+
+          // Color — Tint (enum: ink/accent/custom) + Blend (boolean)
+          var tintKey = "texture.disc.envelope.tint@" + theme;
+          var tintSpec = d2SpecsByKey[tintKey];
+          var tintValue = d2CurrentValue(tintKey);
+          colorBody.appendChild(
+            d2BuildTintDial(
+              tintKey,
+              (tintSpec && tintSpec.options) || ["ink", "accent", "custom"],
+              tintValue,
+            ),
+          );
+
+          var blendKey = "texture.disc.envelope.screenBlend@" + theme;
+          colorBody.appendChild(
+            d2BuildBlendDial(blendKey, !!d2CurrentValue(blendKey)),
+          );
+        }
+
+        function d2SetSegActive(groupEl, attr, value) {
+          if (!groupEl) return;
+          groupEl.querySelectorAll("button").forEach(function (btn) {
+            btn.classList.toggle("on", btn.getAttribute(attr) === value);
+          });
+        }
+
+        function d2UpdateStageMeta() {
+          var text = d2State.surface + " · " + d2State.theme;
+          var metaEl = document.getElementById("d2-stage-meta");
+          var crumbEl = document.getElementById("d2-crumb-target");
+          if (metaEl) metaEl.textContent = text;
+          if (crumbEl) crumbEl.textContent = text;
+        }
+
+        function d2WireTabs() {
+          var tabBtns = document.querySelectorAll("#stage-d2 .tabs button");
+          function showTab(name) {
+            tabBtns.forEach(function (b) {
+              b.classList.toggle("on", b.dataset.tab === name);
+            });
+            document.getElementById("d2-tab-look").hidden = name !== "look";
+            document.getElementById("d2-tab-setup").hidden = name !== "setup";
+          }
+          tabBtns.forEach(function (b) {
+            b.addEventListener("click", function () {
+              showTab(b.dataset.tab);
+            });
+          });
+          document
+            .getElementById("d2-crumb")
+            .addEventListener("click", function () {
+              showTab("setup");
+            });
+          document
+            .getElementById("d2-gear")
+            .addEventListener("click", function () {
+              showTab("setup");
+            });
+        }
+
+        // Setup tab — Surface/Theme/Backdrop, reusing the SAME
+        // window.SurfaceFxStage.setShape/setTheme/setBackground calls the
+        // old floating control strip used (see git history for that
+        // version) — just re-homed onto the D2 Setup tab's segmented
+        // controls. Theme flip additionally re-renders the Look tab so its
+        // dials retarget to the other theme's "@light"/"@dark" keys.
+        function d2WireSetup() {
+          var surfaceSeg = document.getElementById("d2-surface-seg");
+          var themeSeg = document.getElementById("d2-theme-seg");
+          var bgSeg = document.getElementById("d2-bg-seg");
+
+          surfaceSeg.addEventListener("click", function (e) {
+            var btn = e.target.closest("button[data-surface]");
+            if (!btn) return;
+            var surface = btn.getAttribute("data-surface");
+            var shape = surface === "sheet" ? "roundedRect" : "circle";
+            window.SurfaceFxStage.setShape(shape);
+            d2State.surface = surface;
+            d2State.shape = shape;
+            d2SetSegActive(surfaceSeg, "data-surface", surface);
+            d2UpdateStageMeta();
+          });
+
+          themeSeg.addEventListener("click", function (e) {
+            var btn = e.target.closest("button[data-theme]");
+            if (!btn) return;
+            var theme = btn.getAttribute("data-theme");
+            window.SurfaceFxStage.setTheme(theme);
+            d2State.theme = theme;
+            d2SetSegActive(themeSeg, "data-theme", theme);
+            d2UpdateStageMeta();
+            renderD2LookTab();
+          });
+
+          bgSeg.addEventListener("click", function (e) {
+            var btn = e.target.closest("button[data-bg]");
+            if (!btn) return;
+            var mode = btn.getAttribute("data-bg");
+            window.SurfaceFxStage.setBackground(mode);
+            d2SetSegActive(bgSeg, "data-bg", mode);
+          });
+
+          // Non-functional stub this wave — see task scope.
+          document
+            .getElementById("d2-bake-btn")
+            .addEventListener("click", function () {
+              console.info("[stage-d2] Bake to site — stub, not wired yet.");
+            });
+        }
+
+        // Layers track selection — visual only; only the Texture track
+        // drives the stage this wave (see Dither shadow/Ripple's "inert"
+        // class + title attr in the markup above).
+        function d2WireTracks() {
+          var tracks = document.querySelectorAll("#stage-d2 .trk");
+          var titleEl = document.getElementById("d2-motion-title");
+          tracks.forEach(function (t) {
+            t.addEventListener("click", function () {
+              tracks.forEach(function (x) {
+                x.classList.remove("sel");
+              });
+              t.classList.add("sel");
+              titleEl.textContent = "Motion — " + t.dataset.track;
+            });
+          });
+        }
+
+        // Presentational envelope playhead sweep — copied verbatim from
+        // docs/plans/tuner-mockup-D2.html; not wired to any real timing.
+        function d2WirePreview() {
+          var btn = document.getElementById("d2-play-btn");
+          var ph = document.getElementById("d2-playhead");
+          var raf = null;
+          btn.addEventListener("click", function () {
+            if (raf) cancelAnimationFrame(raf);
+            var start = performance.now();
+            var dur = 1400;
+            (function step(t) {
+              var p = Math.min(1, (t - start) / dur);
+              ph.style.left = 8 + p * 88 + "%";
+              if (p < 1) {
+                raf = requestAnimationFrame(step);
+              } else {
+                ph.style.left = "8%";
+              }
+            })(start);
+          });
+        }
+
+        // Presentational Trigger segmented control — copied verbatim from
+        // docs/plans/tuner-mockup-D2.html; not wired to any real trigger.
+        function d2WireTrigRow() {
+          document
+            .querySelectorAll("#stage-d2 .motion .seg")
+            .forEach(function (seg) {
+              seg.addEventListener("click", function (e) {
+                if (e.target.tagName === "BUTTON") {
+                  seg.querySelectorAll("button").forEach(function (b) {
+                    b.classList.remove("on");
+                  });
+                  e.target.classList.add("on");
+                }
+              });
+            });
+        }
+
+        function initD2Stage(initialTarget) {
+          var applied = window.SurfaceFxStage.loadSample(initialTarget);
+          d2State.shape = applied ? applied.shape : "circle";
+          d2State.theme = applied ? applied.theme : "light";
+          d2State.surface = d2State.shape === "roundedRect" ? "sheet" : "disc";
+
+          d2SetSegActive(
+            document.getElementById("d2-surface-seg"),
+            "data-surface",
+            d2State.surface,
+          );
+          d2SetSegActive(
+            document.getElementById("d2-theme-seg"),
+            "data-theme",
+            d2State.theme,
+          );
+          d2SetSegActive(
+            document.getElementById("d2-bg-seg"),
+            "data-bg",
+            "paper",
+          );
+          d2UpdateStageMeta();
+
+          d2WireTabs();
+          d2WireSetup();
+          d2WireTracks();
+          d2WirePreview();
+          d2WireTrigRow();
+
+          Promise.all([
+            window.SurfaceFxStage.bridgeGet("list"),
+            window.SurfaceFxStage.bridgeGet("snapshot"),
+          ])
+            .then(function (results) {
+              (results[0].specs || []).forEach(function (spec) {
+                d2SpecsByKey[spec.key] = spec;
+              });
+              d2Params = results[1].params || {};
+              renderD2LookTab();
+            })
+            .catch(function (err) {
+              console.error("[stage-d2] failed to load registry/snapshot", err);
+            });
         }
 
         // ── Stage boot — "?stage=1[&target=<id>]" (set by
@@ -1325,16 +2633,15 @@
 
         if (isStage) {
           document.getElementById("app").style.display = "none";
+          var stageD2 = document.getElementById("stage-d2");
+          stageD2.style.display = "block";
           var stageWrap = document.getElementById("stage-wrap");
-          stageWrap.style.display = "block";
-          var stageControls = document.getElementById("stage-controls");
-          stageControls.style.display = "flex";
 
           var stageScript = document.createElement("script");
           stageScript.src = "/standalone.js";
           stageScript.onload = function () {
             window.SurfaceFxStage.mount(stageWrap);
-            setUpStageControls(stageTarget || "disc");
+            initD2Stage(stageTarget || "disc");
           };
           stageScript.onerror = function () {
             stageWrap.textContent =
