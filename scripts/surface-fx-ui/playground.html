@@ -752,6 +752,44 @@
         color: var(--amber);
         font-weight: 500;
       }
+      #stage-d2 .dial .dval-wrap {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      #stage-d2 .dial input.dval {
+        width: 54px;
+        border: 1px solid transparent;
+        background: transparent;
+        border-radius: 4px;
+        text-align: right;
+        padding: 1px 3px;
+      }
+      #stage-d2 .dial input.dval:hover,
+      #stage-d2 .dial input.dval:focus {
+        border-color: var(--line);
+        background: var(--panel-2);
+        outline: none;
+      }
+      #stage-d2 .dial .dunit {
+        font-family: var(--d2-mono);
+        font-size: 10px;
+        color: var(--ink-faint);
+      }
+      #stage-d2 .dial .dreset {
+        border: 0;
+        background: transparent;
+        color: var(--ink-faint);
+        cursor: pointer;
+        font-size: 12px;
+        line-height: 1;
+        padding: 2px;
+        border-radius: 4px;
+      }
+      #stage-d2 .dial .dreset:hover {
+        color: var(--amber);
+        background: var(--panel-2);
+      }
       #stage-d2 .dial .key {
         font-family: var(--d2-mono);
         font-size: 9px;
@@ -844,6 +882,46 @@
         display: flex;
         align-items: center;
         gap: 6px;
+      }
+      #stage-d2 .d2-diff-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 6px;
+      }
+      #stage-d2 #d2-diff-count {
+        font-size: 10.5px;
+        color: var(--ink-faint);
+      }
+      #stage-d2 .d2-diff-copy {
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: var(--r-sm);
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--amber);
+        cursor: pointer;
+      }
+      #stage-d2 .d2-diff-copy.copied {
+        color: #fff;
+        background: var(--amber);
+        border-color: var(--amber);
+      }
+      #stage-d2 #d2-diff-list {
+        max-height: 160px;
+        overflow-y: auto;
+        font-family: var(--d2-mono);
+        font-size: 10.5px;
+      }
+      #stage-d2 .d2-diff-row {
+        padding: 3px 0;
+        color: var(--ink-soft);
+        border-bottom: 1px solid var(--line-soft);
+      }
+      #stage-d2 .d2-diff-empty {
+        color: var(--ink-faint);
+        padding: 4px 0;
+        font-size: 11px;
       }
 
       /* Setup tab */
@@ -1260,6 +1338,26 @@
                 <span class="chev">›</span>
               </summary>
               <div class="acc-body" id="d2-color-body"></div>
+            </details>
+
+            <details class="acc" open>
+              <summary>
+                Changes <span class="grp-sub">· vs baked defaults</span>
+                <span class="chev">›</span>
+              </summary>
+              <div class="acc-body" id="d2-diff-body">
+                <div class="d2-diff-toolbar">
+                  <span id="d2-diff-count">0 changed</span>
+                  <button
+                    type="button"
+                    class="d2-diff-copy"
+                    id="d2-diff-copy-btn"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <div id="d2-diff-list"></div>
+              </div>
             </details>
           </div>
 
@@ -2083,22 +2181,25 @@
         // synchronous/local, no network round trip to coalesce).
         var d2Params = {};
         var d2State = { theme: "light", shape: "circle", surface: "disc" };
+        // Keys of the dials actually built by the last renderD2LookTab()
+        // call — used to scope the Changes accordion's diff to what's on
+        // screen right now, not the whole registry. Reset + repopulated at
+        // the top of every renderD2LookTab() call.
+        var d2RenderedKeys = [];
 
-        // Each shader mode's primary "size" field — drives the Form
-        // accordion's "Pattern scale" dial, whose key depends on whichever
-        // mode Shape is currently set to. Field names/ranges are confirmed
-        // against src/schema/textureTuningRegistry.ts's MODE_FIELD_META.
-        var D2_PRIMARY_SIZE_FIELD = {
-          led: "cellSize",
-          concentric: "ringSpacing",
-          flow: "scale",
-          bayer: "matrixSize",
-          halftone: "cellSize",
-          bluenoise: "scale",
-          scanlines: "lineFreq",
-          crosshatch: "hatchFreq",
-          lego: "studSize",
-        };
+        // Fallback Shape chip list if a mode spec's `options` isn't loaded
+        // yet — mirrors TEXTURE_MODES minus "css" (added back below).
+        var D2_SHADER_MODES = [
+          "led",
+          "concentric",
+          "flow",
+          "bayer",
+          "halftone",
+          "bluenoise",
+          "scanlines",
+          "crosshatch",
+          "lego",
+        ];
 
         var D2_TINT_SWATCH = {
           ink: "var(--ink)",
@@ -2115,15 +2216,109 @@
 
         function d2SetValue(key, value) {
           d2Params[key] = value; // optimistic
+          d2RefreshDiffPanel();
           window.SurfaceFxStage.bridgeSet(key, value)
             .then(function (result) {
               if (result && result.clamped !== undefined) {
                 d2Params[key] = result.clamped;
+                d2RefreshDiffPanel();
               }
             })
             .catch(function (err) {
               console.error("[stage-d2] bridgeSet failed for " + key, err);
             });
+        }
+
+        // ── Changes accordion — diff of the currently-rendered Look-tab
+        // dials against their baked defaults. Same compare-against-default
+        // logic as the dev-bridge computeDeviations()/buildBakeBlock() pair
+        // above, reimplemented against d2Params/d2SpecsByKey/d2RenderedKeys
+        // so it never touches the dev-bridge #app panel's own `state`. ────
+
+        function d2FmtAny(v) {
+          if (typeof v === "boolean") return v ? "true" : "false";
+          if (typeof v === "number") return d2FmtNum(v);
+          return String(v);
+        }
+
+        function d2ComputeDeviations() {
+          var out = [];
+          d2RenderedKeys.forEach(function (key) {
+            var spec = d2SpecsByKey[key];
+            if (!spec) return;
+            var current = d2CurrentValue(key);
+            if (current !== spec.default) {
+              out.push({ key: key, current: current, default: spec.default });
+            }
+          });
+          out.sort(function (a, b) {
+            return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+          });
+          return out;
+        }
+
+        function d2RefreshDiffPanel() {
+          var countEl = document.getElementById("d2-diff-count");
+          var listEl = document.getElementById("d2-diff-list");
+          if (!countEl || !listEl) return; // Look tab not mounted yet
+          var deviations = d2ComputeDeviations();
+          countEl.textContent =
+            deviations.length +
+            (deviations.length === 1 ? " changed" : " changed");
+          listEl.innerHTML = "";
+          if (deviations.length === 0) {
+            var empty = document.createElement("div");
+            empty.className = "d2-diff-empty";
+            empty.textContent =
+              "no changes — all rendered dials at baked defaults";
+            listEl.appendChild(empty);
+          } else {
+            deviations.forEach(function (d) {
+              var row = document.createElement("div");
+              row.className = "d2-diff-row";
+              row.textContent =
+                d.key +
+                " = " +
+                d2FmtAny(d.current) +
+                "  (default " +
+                d2FmtAny(d.default) +
+                ")";
+              listEl.appendChild(row);
+            });
+          }
+        }
+
+        function d2WireDiffPanel() {
+          var copyBtn = document.getElementById("d2-diff-copy-btn");
+          copyBtn.addEventListener("click", function () {
+            var deviations = d2ComputeDeviations();
+            var lines =
+              deviations.length === 0
+                ? ["# no changes — all rendered dials at baked defaults"]
+                : deviations.map(function (d) {
+                    return (
+                      d.key +
+                      " = " +
+                      d2FmtAny(d.current) +
+                      "  // default was " +
+                      d2FmtAny(d.default)
+                    );
+                  });
+            var text = lines.join("\n");
+            var done = function () {
+              copyBtn.classList.add("copied");
+              copyBtn.textContent = "Copied";
+              setTimeout(function () {
+                copyBtn.classList.remove("copied");
+                copyBtn.textContent = "Copy";
+              }, 1200);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(text).then(done).catch(done);
+            } else {
+              done();
+            }
+          });
         }
 
         function d2FmtNum(v) {
@@ -2154,6 +2349,7 @@
               ? spec.step
               : (max - min) / 100 || 1;
           var unit = (spec && spec.unit) || "";
+          var defaultValue = spec ? spec.default : value;
 
           var dial = document.createElement("div");
           dial.className = "dial";
@@ -2163,10 +2359,35 @@
           var dname = document.createElement("span");
           dname.className = "dname";
           dname.textContent = labelText;
-          var dval = document.createElement("span");
-          dval.className = "dval";
+
+          var dvalWrap = document.createElement("span");
+          dvalWrap.className = "dval-wrap";
+
+          var dval = document.createElement("input");
+          dval.type = "number";
+          dval.className = "dval dnum";
+          dval.min = min;
+          dval.max = max;
+          dval.step = step;
+          dval.value = d2FmtNum(value);
+
+          var dunit = document.createElement("span");
+          dunit.className = "dunit";
+          dunit.textContent = unit;
+
+          var dreset = document.createElement("button");
+          dreset.type = "button";
+          dreset.className = "dreset";
+          dreset.title =
+            "Reset to default (" + d2FmtNum(defaultValue) + unit + ")";
+          dreset.textContent = "↺";
+
+          dvalWrap.appendChild(dval);
+          if (unit) dvalWrap.appendChild(dunit);
+          dvalWrap.appendChild(dreset);
+
           drow.appendChild(dname);
-          drow.appendChild(dval);
+          drow.appendChild(dvalWrap);
           dial.appendChild(drow);
 
           var range = document.createElement("input");
@@ -2178,7 +2399,8 @@
           range.value = value;
 
           function paint(v) {
-            dval.textContent = d2FmtNum(v) + unit;
+            range.value = v;
+            dval.value = d2FmtNum(v);
             var pct = max > min ? ((Number(v) - min) / (max - min)) * 100 : 0;
             range.style.background =
               "linear-gradient(to right, var(--amber) 0%, var(--amber) " +
@@ -2192,6 +2414,26 @@
           range.addEventListener("input", function () {
             paint(range.value);
             d2SetValue(key, Number(range.value));
+          });
+
+          function commitNum() {
+            var raw = Number(dval.value);
+            if (!Number.isFinite(raw)) raw = Number(d2CurrentValue(key));
+            raw = Math.min(max, Math.max(min, raw));
+            paint(raw);
+            d2SetValue(key, raw);
+          }
+          dval.addEventListener("blur", commitNum);
+          dval.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+              commitNum();
+              dval.blur();
+            }
+          });
+
+          dreset.addEventListener("click", function () {
+            paint(defaultValue);
+            d2SetValue(key, defaultValue);
           });
 
           dial.appendChild(range);
@@ -2271,7 +2513,13 @@
             row.appendChild(sc);
           });
           dial.appendChild(row);
-          dial.appendChild(d2KeyLine("texture.disc.envelope.", "tint", theme));
+          dial.appendChild(
+            d2KeyLine(
+              "texture." + d2State.surface + ".envelope.",
+              "tint",
+              theme,
+            ),
+          );
           return dial;
         }
 
@@ -2309,7 +2557,11 @@
           });
           dial.appendChild(chips);
           dial.appendChild(
-            d2KeyLine("texture.disc.envelope.", "screenBlend", theme),
+            d2KeyLine(
+              "texture." + d2State.surface + ".envelope.",
+              "screenBlend",
+              theme,
+            ),
           );
           return dial;
         }
@@ -2321,20 +2573,23 @@
         // "@dark" suffix and reloads values from d2Params for that theme).
         function renderD2LookTab() {
           var theme = d2State.theme;
+          var surface = d2State.surface;
+          var prefix = "texture." + surface + ".";
           var formBody = document.getElementById("d2-form-body");
           var visBody = document.getElementById("d2-visibility-body");
           var colorBody = document.getElementById("d2-color-body");
           formBody.innerHTML = "";
           visBody.innerHTML = "";
           colorBody.innerHTML = "";
+          d2RenderedKeys = [];
 
           // Form — Shape (mode enum)
-          var modeKey = "texture.disc.layer.mode@" + theme;
+          var modeKey = prefix + "layer.mode@" + theme;
           var modeSpec = d2SpecsByKey[modeKey];
           var modeValue = d2CurrentValue(modeKey);
           var modeOptions =
-            (modeSpec && modeSpec.options) ||
-            Object.keys(D2_PRIMARY_SIZE_FIELD).concat(["css"]);
+            (modeSpec && modeSpec.options) || D2_SHADER_MODES.concat(["css"]);
+          d2RenderedKeys.push(modeKey);
           formBody.appendChild(
             d2BuildEnumChipDial(
               "Shape",
@@ -2343,21 +2598,28 @@
               modeValue,
               function (opt) {
                 d2SetValue(modeKey, opt);
-                renderD2LookTab(); // Pattern scale's key depends on the selected mode
+                renderD2LookTab(); // the field set below depends on the selected mode
               },
-              "texture.disc.",
+              prefix,
               "layer.mode",
             ),
           );
 
-          // Form — Pattern scale (the selected mode's primary size field)
+          // Form — the active mode's complete param set (3–4 fields per
+          // mode; see MODE_FIELD_META in textureTuningRegistry.ts). Derived
+          // at runtime from d2SpecsByKey rather than a second hardcoded
+          // per-mode field table — filter by the spec's registry `group`
+          // ("texture.<surface>.<mode>") and the active theme suffix, in
+          // the order bridgeGet("list") returned them (MODE_FIELD_KEYS
+          // order, preserved since d2SpecsByKey keys are string-keyed and
+          // JS preserves string-key insertion order).
           if (modeValue === "css") {
             var noneDial = document.createElement("div");
             noneDial.className = "dial";
             var noneRow = document.createElement("div");
             noneRow.className = "drow";
             noneRow.innerHTML =
-              '<span class="dname">Pattern scale</span><span class="dval">—</span>';
+              '<span class="dname">Pattern</span><span class="dval">—</span>';
             noneDial.appendChild(noneRow);
             var noneKey = document.createElement("span");
             noneKey.className = "key";
@@ -2365,57 +2627,46 @@
             noneDial.appendChild(noneKey);
             formBody.appendChild(noneDial);
           } else {
-            var field = D2_PRIMARY_SIZE_FIELD[modeValue] || "cellSize";
-            var scaleKey =
-              "texture.disc." + modeValue + "." + field + "@" + theme;
-            formBody.appendChild(
-              d2BuildSliderDial(
-                "Pattern scale",
-                scaleKey,
-                "texture.disc.",
-                modeValue + "." + field,
-              ),
-            );
+            var modeGroup = "texture." + surface + "." + modeValue;
+            var themeSuffix = "@" + theme;
+            Object.keys(d2SpecsByKey).forEach(function (specKey) {
+              var fieldSpec = d2SpecsByKey[specKey];
+              if (fieldSpec.group !== modeGroup) return;
+              if (specKey.slice(-themeSuffix.length) !== themeSuffix) return;
+              var field = specKey.split("@")[0].split(".").pop();
+              d2RenderedKeys.push(specKey);
+              formBody.appendChild(
+                d2BuildSliderDial(
+                  fieldSpec.label || field,
+                  specKey,
+                  prefix,
+                  modeValue + "." + field,
+                ),
+              );
+            });
           }
 
-          // Visibility — envelope reach/fadeSoftness/opacity/innerCutout
-          visBody.appendChild(
-            d2BuildSliderDial(
-              "Density",
-              "texture.disc.envelope.reach@" + theme,
-              "texture.disc.envelope.",
-              "reach",
-            ),
-          );
-          visBody.appendChild(
-            d2BuildSliderDial(
-              "Feather",
-              "texture.disc.envelope.fadeSoftness@" + theme,
-              "texture.disc.envelope.",
-              "fadeSoftness",
-            ),
-          );
-          visBody.appendChild(
-            d2BuildSliderDial(
-              "Opacity",
-              "texture.disc.envelope.opacity@" + theme,
-              "texture.disc.envelope.",
-              "opacity",
-            ),
-          );
-          visBody.appendChild(
-            d2BuildSliderDial(
-              "Inner cutout",
-              "texture.disc.envelope.innerCutout@" + theme,
-              "texture.disc.envelope.",
-              "innerCutout",
-            ),
-          );
+          // Visibility — all 8 envelope controls.
+          [
+            ["Density", "reach"],
+            ["Fade origin", "fadeOrigin"],
+            ["Feather", "fadeSoftness"],
+            ["Opacity", "opacity"],
+            ["Inner cutout", "innerCutout"],
+            ["Mobile scale", "mobileScale"],
+          ].forEach(function (pair) {
+            var envKey = prefix + "envelope." + pair[1] + "@" + theme;
+            d2RenderedKeys.push(envKey);
+            visBody.appendChild(
+              d2BuildSliderDial(pair[0], envKey, prefix + "envelope.", pair[1]),
+            );
+          });
 
           // Color — Tint (enum: ink/accent/custom) + Blend (boolean)
-          var tintKey = "texture.disc.envelope.tint@" + theme;
+          var tintKey = prefix + "envelope.tint@" + theme;
           var tintSpec = d2SpecsByKey[tintKey];
           var tintValue = d2CurrentValue(tintKey);
+          d2RenderedKeys.push(tintKey);
           colorBody.appendChild(
             d2BuildTintDial(
               tintKey,
@@ -2424,10 +2675,13 @@
             ),
           );
 
-          var blendKey = "texture.disc.envelope.screenBlend@" + theme;
+          var blendKey = prefix + "envelope.screenBlend@" + theme;
+          d2RenderedKeys.push(blendKey);
           colorBody.appendChild(
             d2BuildBlendDial(blendKey, !!d2CurrentValue(blendKey)),
           );
+
+          d2RefreshDiffPanel();
         }
 
         function d2SetSegActive(groupEl, attr, value) {
@@ -2492,6 +2746,7 @@
             d2State.shape = shape;
             d2SetSegActive(surfaceSeg, "data-surface", surface);
             d2UpdateStageMeta();
+            renderD2LookTab(); // dials re-target to this surface's keys
           });
 
           themeSeg.addEventListener("click", function (e) {
@@ -2605,6 +2860,7 @@
           d2WireTracks();
           d2WirePreview();
           d2WireTrigRow();
+          d2WireDiffPanel();
 
           Promise.all([
             window.SurfaceFxStage.bridgeGet("list"),
