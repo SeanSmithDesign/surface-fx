@@ -1,0 +1,1056 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>surface-fx tuner — Direction D mockup</title>
+    <style>
+      :root {
+        --paper: #f3eee4;
+        --panel: #fbf8f1;
+        --panel-2: #efe8da;
+        --ink: #2b2620;
+        --ink-soft: #6e655a;
+        --ink-faint: #a79c8c;
+        --line: #ddd3c1;
+        --line-soft: #e7dece;
+        --amber: #c77b3b;
+        --amber-soft: #e7c79e;
+        --amber-wash: #f6e6d2;
+        --good: #5c8a5a;
+        --stage: #ece5d7;
+        --stage-ink: #0f0d0b;
+        --shadow:
+          0 1px 0 rgba(43, 38, 32, 0.04),
+          0 8px 24px -14px rgba(43, 38, 32, 0.28);
+        --r: 10px;
+        --r-sm: 7px;
+        --mono: ui-monospace, "SF Mono", Menlo, monospace;
+        --sans:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #181512;
+          --panel: #211d18;
+          --panel-2: #1c1813;
+          --ink: #efe7da;
+          --ink-soft: #a99e8e;
+          --ink-faint: #6b6155;
+          --line: #332d25;
+          --line-soft: #2a251f;
+          --amber: #d98f4e;
+          --amber-soft: #6b4a2a;
+          --amber-wash: #2a2018;
+          --stage: #12100d;
+          --stage-ink: #f3eee4;
+          --shadow:
+            0 1px 0 rgba(0, 0, 0, 0.2), 0 10px 30px -16px rgba(0, 0, 0, 0.7);
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 13px;
+        line-height: 1.4;
+        -webkit-font-smoothing: antialiased;
+      }
+      .app {
+        height: 100vh;
+        display: grid;
+        grid-template-columns: 190px 1fr 264px;
+        grid-template-rows: 52px 1fr 232px;
+        grid-template-areas:
+          "top    top     top"
+          "layers stage   inspect"
+          "layers motion  inspect";
+        gap: 0;
+      }
+      /* ---- top context bar ---- */
+      .top {
+        grid-area: top;
+        display: flex;
+        align-items: center;
+        gap: 0;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+        padding: 0 14px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-right: 16px;
+        margin-right: 4px;
+        border-right: 1px solid var(--line);
+        height: 100%;
+      }
+      .brand .dot {
+        width: 15px;
+        height: 15px;
+        border-radius: 4px;
+        background:
+          repeating-linear-gradient(
+            45deg,
+            var(--amber) 0 2px,
+            transparent 2px 4px
+          ),
+          var(--amber-soft);
+      }
+      .brand b {
+        font-weight: 640;
+        letter-spacing: -0.01em;
+        font-size: 13px;
+      }
+      .brand span {
+        color: var(--ink-faint);
+        font-family: var(--mono);
+        font-size: 10px;
+      }
+      .ctx {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 16px;
+        flex: 1;
+      }
+      .ctx-group {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+      .ctx-label {
+        color: var(--ink-faint);
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+      }
+      .seg {
+        display: inline-flex;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: var(--r-sm);
+        padding: 2px;
+      }
+      .seg button {
+        font: inherit;
+        font-size: 12px;
+        border: 0;
+        background: transparent;
+        color: var(--ink-soft);
+        padding: 3px 9px;
+        border-radius: 5px;
+        cursor: pointer;
+        line-height: 1.3;
+      }
+      .seg button.on {
+        background: var(--panel);
+        color: var(--ink);
+        box-shadow: var(--shadow);
+        font-weight: 560;
+      }
+      .seg.amber button.on {
+        background: var(--amber);
+        color: #fff;
+      }
+      .bake {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: var(--ink);
+        color: var(--paper);
+        border: 0;
+        border-radius: var(--r-sm);
+        padding: 8px 14px;
+        font: inherit;
+        font-weight: 560;
+        font-size: 12px;
+        cursor: pointer;
+        box-shadow: var(--shadow);
+      }
+      .bake .arrow {
+        opacity: 0.7;
+      }
+      /* ---- layers rail ---- */
+      .layers {
+        grid-area: layers;
+        border-right: 1px solid var(--line);
+        background: var(--panel-2);
+        overflow-y: auto;
+      }
+      .rail-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 11px 13px 8px;
+      }
+      .rail-head h3 {
+        margin: 0;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--ink-faint);
+        font-weight: 600;
+      }
+      .rail-head .add {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--ink-soft);
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1;
+        display: grid;
+        place-items: center;
+      }
+      .layer {
+        margin: 0 8px 4px;
+        padding: 9px 10px;
+        border-radius: var(--r-sm);
+        cursor: pointer;
+        border: 1px solid transparent;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .layer.sel {
+        background: var(--panel);
+        border-color: var(--line);
+        box-shadow: var(--shadow);
+      }
+      .layer .lrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .layer .swatch {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        flex: none;
+      }
+      .sw-dither {
+        background: repeating-linear-gradient(
+          0deg,
+          var(--ink) 0 1.5px,
+          transparent 1.5px 3px
+        );
+      }
+      .sw-ripple {
+        background: radial-gradient(
+          circle at 50% 50%,
+          transparent 30%,
+          var(--amber) 31% 40%,
+          transparent 41%
+        );
+      }
+      .sw-texture {
+        background: conic-gradient(
+          var(--amber) 0 25%,
+          transparent 0 50%,
+          var(--amber) 0 75%,
+          transparent 0
+        );
+        background-size: 6px 6px;
+      }
+      .layer .lname {
+        font-weight: 560;
+        font-size: 12.5px;
+        flex: 1;
+      }
+      .layer .eye {
+        color: var(--ink-faint);
+        font-size: 12px;
+      }
+      .layer .trig {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--amber);
+        background: var(--amber-wash);
+        padding: 1px 6px;
+        border-radius: 20px;
+        align-self: flex-start;
+        margin-left: 24px;
+      }
+      .rail-foot {
+        padding: 10px 13px;
+        margin-top: 6px;
+        border-top: 1px solid var(--line-soft);
+      }
+      .rail-foot p {
+        margin: 0;
+        font-size: 11px;
+        color: var(--ink-faint);
+        line-height: 1.5;
+      }
+      .rail-foot code {
+        font-family: var(--mono);
+        color: var(--ink-soft);
+        font-size: 10px;
+      }
+      /* ---- stage ---- */
+      .stage {
+        grid-area: stage;
+        position: relative;
+        background: var(--stage);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+      .stage-chrome {
+        position: absolute;
+        top: 10px;
+        left: 12px;
+        right: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: var(--ink-faint);
+        font-size: 11px;
+        font-family: var(--mono);
+      }
+      .stage-chrome .zone {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .card-demo {
+        width: 230px;
+        height: 150px;
+        border-radius: 14px;
+        background: var(--panel);
+        box-shadow: 0 30px 60px -30px rgba(43, 38, 32, 0.5);
+        position: relative;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+      }
+      .card-demo .dither-shadow {
+        position: absolute;
+        inset: -2px -2px -26px -2px;
+        border-radius: 16px;
+        z-index: -1;
+        background: radial-gradient(
+          ellipse 80% 60% at 50% 90%,
+          var(--stage-ink) 0%,
+          transparent 70%
+        );
+        opacity: 0.2;
+        -webkit-mask-image: repeating-linear-gradient(
+          0deg,
+          #000 0 1.4px,
+          transparent 1.4px 2.8px
+        );
+        mask-image: repeating-linear-gradient(
+          0deg,
+          #000 0 1.4px,
+          transparent 1.4px 2.8px
+        );
+      }
+      .card-demo .cd-label {
+        font-size: 12px;
+        color: var(--ink-soft);
+      }
+      .card-demo .cd-title {
+        font-weight: 640;
+        font-size: 15px;
+        color: var(--ink);
+        margin-bottom: 2px;
+      }
+      .stage-caption {
+        position: absolute;
+        bottom: 10px;
+        left: 12px;
+        font-size: 11px;
+        color: var(--ink-faint);
+        font-style: italic;
+      }
+      /* ---- inspector ---- */
+      .inspect {
+        grid-area: inspect;
+        border-left: 1px solid var(--line);
+        background: var(--panel);
+        overflow-y: auto;
+      }
+      .insp-head {
+        padding: 12px 14px 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .insp-head .swatch {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+      }
+      .insp-head b {
+        font-size: 13px;
+        font-weight: 620;
+      }
+      .insp-head .look-tag {
+        margin-left: auto;
+        font-size: 9.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--good);
+        background: color-mix(in srgb, var(--good) 12%, transparent);
+        padding: 2px 7px;
+        border-radius: 20px;
+        font-weight: 600;
+      }
+      .acc {
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .acc > summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 12px;
+        user-select: none;
+      }
+      .acc > summary::-webkit-details-marker {
+        display: none;
+      }
+      .acc > summary .chev {
+        color: var(--ink-faint);
+        font-size: 10px;
+        transition: transform 0.15s;
+        margin-left: auto;
+      }
+      .acc[open] > summary .chev {
+        transform: rotate(90deg);
+      }
+      .acc > summary .grp-sub {
+        color: var(--ink-faint);
+        font-weight: 400;
+        font-size: 10.5px;
+      }
+      .acc-body {
+        padding: 2px 14px 12px;
+      }
+      .dial {
+        padding: 7px 0;
+      }
+      .dial .drow {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 5px;
+      }
+      .dial .dname {
+        font-size: 12px;
+        font-weight: 520;
+      }
+      .dial .dval {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--amber);
+        font-weight: 500;
+      }
+      .dial .key {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--ink-faint);
+        display: block;
+        margin-top: 3px;
+        letter-spacing: -0.02em;
+      }
+      .dial .key em {
+        color: var(--amber);
+        font-style: normal;
+        opacity: 0.8;
+      }
+      .track {
+        height: 4px;
+        border-radius: 3px;
+        background: var(--panel-2);
+        position: relative;
+      }
+      .track .fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        border-radius: 3px;
+        background: var(--amber);
+      }
+      .track .knob {
+        position: absolute;
+        top: 50%;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: var(--panel);
+        border: 1.5px solid var(--amber);
+        transform: translate(-50%, -50%);
+        box-shadow: var(--shadow);
+      }
+      .chips {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        font-size: 11px;
+        padding: 4px 9px;
+        border-radius: 20px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--ink-soft);
+        cursor: pointer;
+      }
+      .chip.on {
+        background: var(--amber);
+        color: #fff;
+        border-color: var(--amber);
+      }
+      .swatchrow {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .swatchrow .sc {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        cursor: pointer;
+      }
+      .swatchrow .sc.on {
+        outline: 2px solid var(--amber);
+        outline-offset: 1px;
+      }
+      .disclosure {
+        margin: 4px 14px 12px;
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .disclosure button {
+        font: inherit;
+        font-size: 11px;
+        background: none;
+        border: 0;
+        color: var(--amber);
+        cursor: pointer;
+        padding: 0;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+      /* ---- motion panel ---- */
+      .motion {
+        grid-area: motion;
+        border-top: 1px solid var(--line);
+        background: var(--panel-2);
+        display: grid;
+        grid-template-columns: 1fr 200px;
+      }
+      .motion-main {
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: 0;
+      }
+      .motion-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .motion-head h3 {
+        margin: 0;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--ink-faint);
+        font-weight: 600;
+      }
+      .motion-head .mtag {
+        font-size: 9.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--amber);
+        background: var(--amber-wash);
+        padding: 2px 7px;
+        border-radius: 20px;
+        font-weight: 600;
+      }
+      .play {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--amber);
+        color: #fff;
+        border: 0;
+        border-radius: var(--r-sm);
+        padding: 6px 13px;
+        font: inherit;
+        font-weight: 560;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .trig-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .trig-row .tl {
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .env {
+        flex: 1;
+        position: relative;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--r-sm);
+        overflow: hidden;
+      }
+      .env svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .playhead {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--amber);
+        left: 8%;
+        box-shadow: 0 0 8px var(--amber);
+        opacity: 0.9;
+      }
+      .env-axis {
+        position: absolute;
+        bottom: 3px;
+        left: 8px;
+        right: 8px;
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--ink-faint);
+        pointer-events: none;
+      }
+      .motion-side {
+        border-left: 1px solid var(--line);
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+      }
+      .motion-side h4 {
+        margin: 0 0 2px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--ink-faint);
+        font-weight: 600;
+      }
+      .readout {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 12px;
+      }
+      .readout .rk {
+        color: var(--ink-soft);
+      }
+      .readout .rv {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink);
+        font-weight: 500;
+      }
+      .readout .rv em {
+        color: var(--amber);
+        font-style: normal;
+      }
+      .rm-note {
+        margin-top: auto;
+        font-size: 10px;
+        color: var(--ink-faint);
+        line-height: 1.5;
+        border-top: 1px solid var(--line-soft);
+        padding-top: 8px;
+      }
+      .rm-note b {
+        color: var(--good);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <!-- ============ TOP: context + global ============ -->
+      <div class="top">
+        <div class="brand">
+          <span class="dot"></span><b>surface-fx</b><span>tuner</span>
+        </div>
+        <div class="ctx">
+          <div class="ctx-group">
+            <span class="ctx-label">Surface</span>
+            <div class="seg">
+              <button class="on">Disc</button><button>Sheet</button>
+            </div>
+          </div>
+          <div class="ctx-group">
+            <span class="ctx-label">Theme</span>
+            <div class="seg amber">
+              <button class="on">Light</button><button>Dark</button>
+            </div>
+          </div>
+          <div class="ctx-group">
+            <span class="ctx-label">Backdrop</span>
+            <div class="seg">
+              <button class="on">Paper</button><button>Ink</button
+              ><button>Grid</button>
+            </div>
+          </div>
+        </div>
+        <button class="bake">Bake to site <span class="arrow">→</span></button>
+      </div>
+
+      <!-- ============ LEFT: layers ============ -->
+      <div class="layers">
+        <div class="rail-head">
+          <h3>Effect stack</h3>
+          <button class="add">+</button>
+        </div>
+
+        <div class="layer sel">
+          <div class="lrow">
+            <span class="swatch sw-texture"></span
+            ><span class="lname">Texture</span><span class="eye">◉</span>
+          </div>
+          <span class="trig">on arrival</span>
+        </div>
+        <div class="layer">
+          <div class="lrow">
+            <span class="swatch sw-dither"></span
+            ><span class="lname">Dither shadow</span><span class="eye">◉</span>
+          </div>
+          <span class="trig">on hover</span>
+        </div>
+        <div class="layer">
+          <div class="lrow">
+            <span class="swatch sw-ripple"></span
+            ><span class="lname">Ripple</span><span class="eye">◉</span>
+          </div>
+          <span class="trig">on pointer</span>
+        </div>
+
+        <div class="rail-foot">
+          <p>
+            3 of 4 shader layers active on <code>disc</code>. Each layer edits
+            the same schema store the agent writes.
+          </p>
+        </div>
+      </div>
+
+      <!-- ============ CENTER: stage ============ -->
+      <div class="stage">
+        <div class="stage-chrome">
+          <span class="zone">disc · light · texture</span>
+          <span class="zone">100%</span>
+        </div>
+        <div class="card-demo">
+          <div class="dither-shadow"></div>
+          <div style="text-align: center">
+            <div class="cd-title">Your card</div>
+            <div class="cd-label">texture · halftone</div>
+          </div>
+        </div>
+        <div class="stage-caption">
+          Hover the card to fire the trigger — or press ▶ Preview below.
+        </div>
+      </div>
+
+      <!-- ============ RIGHT: inspector (the Look) ============ -->
+      <div class="inspect">
+        <div class="insp-head">
+          <span class="swatch sw-texture"></span><b>Texture</b>
+          <span class="look-tag">Look</span>
+        </div>
+
+        <details class="acc" open>
+          <summary>
+            Form <span class="grp-sub">· shape &amp; pattern</span>
+            <span class="chev">›</span>
+          </summary>
+          <div class="acc-body">
+            <div class="dial">
+              <div class="drow">
+                <span class="dname">Shape</span
+                ><span class="dval">halftone</span>
+              </div>
+              <div class="chips">
+                <span class="chip">bayer</span
+                ><span class="chip on">halftone</span
+                ><span class="chip">flow</span><span class="chip">led</span
+                ><span class="chip">+5</span>
+              </div>
+              <span class="key">texture.disc.<em>layer.mode</em></span>
+            </div>
+            <div class="dial">
+              <div class="drow">
+                <span class="dname">Pattern scale</span
+                ><span class="dval">6.0px</span>
+              </div>
+              <div class="track">
+                <div class="fill" style="width: 42%"></div>
+                <div class="knob" style="left: 42%"></div>
+              </div>
+              <span class="key">texture.disc.<em>halftone.cellSize</em></span>
+            </div>
+          </div>
+        </details>
+
+        <details class="acc" open>
+          <summary>
+            Visibility
+            <span class="grp-sub">· density · feather · opacity</span>
+            <span class="chev">›</span>
+          </summary>
+          <div class="acc-body">
+            <div class="dial">
+              <div class="drow">
+                <span class="dname">Density</span><span class="dval">0.72</span>
+              </div>
+              <div class="track">
+                <div class="fill" style="width: 72%"></div>
+                <div class="knob" style="left: 72%"></div>
+              </div>
+              <span class="key">texture.disc.envelope.<em>reach</em></span>
+            </div>
+            <div class="dial">
+              <div class="drow">
+                <span class="dname">Feather</span><span class="dval">0.34</span>
+              </div>
+              <div class="track">
+                <div class="fill" style="width: 34%"></div>
+                <div class="knob" style="left: 34%"></div>
+              </div>
+              <span class="key"
+                >texture.disc.envelope.<em>fadeSoftness</em></span
+              >
+            </div>
+            <div class="dial">
+              <div class="drow">
+                <span class="dname">Opacity</span><span class="dval">0.88</span>
+              </div>
+              <div class="track">
+                <div class="fill" style="width: 88%"></div>
+                <div class="knob" style="left: 88%"></div>
+              </div>
+              <span class="key">texture.disc.envelope.<em>opacity</em></span>
+            </div>
+            <div class="dial">
+              <div class="drow">
+                <span class="dname">Inner cutout</span
+                ><span class="dval">0.15</span>
+              </div>
+              <div class="track">
+                <div class="fill" style="width: 15%"></div>
+                <div class="knob" style="left: 15%"></div>
+              </div>
+              <span class="key"
+                >texture.disc.envelope.<em>innerCutout</em></span
+              >
+            </div>
+          </div>
+        </details>
+
+        <details class="acc" open>
+          <summary>
+            Color <span class="grp-sub">· tint &amp; blend</span>
+            <span class="chev">›</span>
+          </summary>
+          <div class="acc-body">
+            <div class="dial">
+              <div class="drow">
+                <span class="dname">Tint</span><span class="dval">#C77B3B</span>
+              </div>
+              <div class="swatchrow">
+                <span class="sc" style="background: #2b2620"></span>
+                <span class="sc on" style="background: #c77b3b"></span>
+                <span class="sc" style="background: #5c8a5a"></span>
+                <span class="sc" style="background: #3b6ea5"></span>
+                <span
+                  class="sc"
+                  style="
+                    background: conic-gradient(
+                      red,
+                      orange,
+                      yellow,
+                      green,
+                      blue,
+                      violet,
+                      red
+                    );
+                  "
+                ></span>
+              </div>
+              <span class="key">texture.disc.envelope.<em>tint</em></span>
+            </div>
+            <div class="dial">
+              <div class="drow">
+                <span class="dname">Blend mode</span
+                ><span class="dval">screen</span>
+              </div>
+              <div class="chips">
+                <span class="chip on">screen</span
+                ><span class="chip">normal</span>
+              </div>
+              <span class="key"
+                >texture.disc.envelope.<em>screenBlend</em></span
+              >
+            </div>
+          </div>
+        </details>
+
+        <div class="disclosure">
+          <span>4 more mode params hidden ·</span
+          ><button>show halftone advanced</button>
+        </div>
+      </div>
+
+      <!-- ============ BOTTOM: motion (the Behavior) ============ -->
+      <div class="motion">
+        <div class="motion-main">
+          <div class="motion-head">
+            <h3>Motion</h3>
+            <span class="mtag">Behavior · reduced-motion aware</span>
+            <button class="play" id="playBtn">▶ Preview</button>
+          </div>
+          <div class="trig-row">
+            <span class="tl">Trigger</span>
+            <div class="seg amber">
+              <button>Hover</button><button>Pointer</button
+              ><button class="on">Arrival</button><button>Click</button>
+            </div>
+            <span class="tl" style="margin-left: 4px">Envelope</span>
+            <div class="env" id="env">
+              <svg viewBox="0 0 400 100" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+                    <stop
+                      offset="0"
+                      stop-color="var(--amber)"
+                      stop-opacity=".28"
+                    />
+                    <stop
+                      offset="1"
+                      stop-color="var(--amber)"
+                      stop-opacity="0"
+                    />
+                  </linearGradient>
+                </defs>
+                <path
+                  d="M0,95 C40,95 30,12 90,12 L150,12 C230,12 250,88 400,90 L400,100 L0,100 Z"
+                  fill="url(#g)"
+                />
+                <path
+                  d="M0,95 C40,95 30,12 90,12 L150,12 C230,12 250,88 400,90"
+                  fill="none"
+                  stroke="var(--amber)"
+                  stroke-width="2"
+                />
+                <circle
+                  cx="90"
+                  cy="12"
+                  r="4"
+                  fill="var(--panel)"
+                  stroke="var(--amber)"
+                  stroke-width="2"
+                />
+                <circle
+                  cx="150"
+                  cy="12"
+                  r="4"
+                  fill="var(--panel)"
+                  stroke="var(--amber)"
+                  stroke-width="2"
+                />
+              </svg>
+              <div class="playhead" id="playhead"></div>
+              <div class="env-axis">
+                <span>attack</span><span>hold</span><span>decay</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="motion-side">
+          <h4>Timing</h4>
+          <div class="readout">
+            <span class="rk">Attack</span><span class="rv"><em>120</em>ms</span>
+          </div>
+          <div class="readout">
+            <span class="rk">Hold</span><span class="rv"><em>80</em>ms</span>
+          </div>
+          <div class="readout">
+            <span class="rk">Decay</span><span class="rv"><em>380</em>ms</span>
+          </div>
+          <div class="readout">
+            <span class="rk">Curve</span><span class="rv">spring</span>
+          </div>
+          <div class="rm-note">
+            <b>Reduced-motion safe.</b> Look params stay; this whole panel
+            collapses to the resting state when the OS asks for less motion.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Accordion feel is native <details>. Small delight: Preview sweeps the playhead.
+      const btn = document.getElementById("playBtn"),
+        ph = document.getElementById("playhead");
+      let raf = null;
+      btn.addEventListener("click", () => {
+        if (raf) cancelAnimationFrame(raf);
+        const start = performance.now(),
+          dur = 1400;
+        (function step(t) {
+          const p = Math.min(1, (t - start) / dur);
+          ph.style.left = 8 + p * 88 + "%";
+          if (p < 1) raf = requestAnimationFrame(step);
+          else ph.style.left = "8%";
+        })(start);
+      });
+      // Segmented + chip toggles for mockup liveliness
+      document.querySelectorAll(".seg").forEach((seg) => {
+        seg.addEventListener("click", (e) => {
+          if (e.target.tagName === "BUTTON") {
+            seg
+              .querySelectorAll("button")
+              .forEach((b) => b.classList.remove("on"));
+            e.target.classList.add("on");
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

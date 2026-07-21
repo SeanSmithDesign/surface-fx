@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>surface-fx tuner — Direction D2 (two-panel)</title>
+    <style>
+      :root {
+        --paper: #f3eee4;
+        --panel: #fbf8f1;
+        --panel-2: #efe8da;
+        --ink: #2b2620;
+        --ink-soft: #6e655a;
+        --ink-faint: #a79c8c;
+        --line: #ddd3c1;
+        --line-soft: #e7dece;
+        --amber: #c77b3b;
+        --amber-soft: #e7c79e;
+        --amber-wash: #f6e6d2;
+        --good: #5c8a5a;
+        --stage: #ece5d7;
+        --stage-ink: #0f0d0b;
+        --shadow:
+          0 1px 0 rgba(43, 38, 32, 0.04),
+          0 8px 24px -14px rgba(43, 38, 32, 0.28);
+        --r: 10px;
+        --r-sm: 7px;
+        --mono: ui-monospace, "SF Mono", Menlo, monospace;
+        --sans:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --paper: #181512;
+          --panel: #211d18;
+          --panel-2: #1c1813;
+          --ink: #efe7da;
+          --ink-soft: #a99e8e;
+          --ink-faint: #6b6155;
+          --line: #332d25;
+          --line-soft: #2a251f;
+          --amber: #d98f4e;
+          --amber-soft: #6b4a2a;
+          --amber-wash: #2a2018;
+          --stage: #12100d;
+          --stage-ink: #f3eee4;
+          --shadow:
+            0 1px 0 rgba(0, 0, 0, 0.2), 0 10px 30px -16px rgba(0, 0, 0, 0.7);
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 13px;
+        line-height: 1.4;
+        -webkit-font-smoothing: antialiased;
+      }
+      .app {
+        height: 100vh;
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        grid-template-rows: 1fr 244px;
+        grid-template-areas: "stage inspect" "motion motion";
+      }
+
+      /* ---------- STAGE ---------- */
+      .stage {
+        grid-area: stage;
+        position: relative;
+        background: var(--stage);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+      .stage-tools {
+        position: absolute;
+        top: 12px;
+        left: 14px;
+        display: flex;
+        gap: 6px;
+      }
+      .stage-tools .tool {
+        width: 30px;
+        height: 30px;
+        border-radius: var(--r-sm);
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--ink-soft);
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        font-size: 14px;
+        box-shadow: var(--shadow);
+      }
+      .stage-tools .tool.settings {
+        margin-left: 2px;
+      }
+      .stage-meta {
+        position: absolute;
+        top: 12px;
+        right: 14px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-faint);
+      }
+      .card-demo {
+        width: 250px;
+        height: 160px;
+        border-radius: 14px;
+        background: var(--panel);
+        box-shadow: 0 30px 60px -30px rgba(43, 38, 32, 0.5);
+        position: relative;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+      }
+      .card-demo .dither-shadow {
+        position: absolute;
+        inset: -2px -2px -28px -2px;
+        border-radius: 16px;
+        z-index: -1;
+        background: radial-gradient(
+          ellipse 80% 60% at 50% 90%,
+          var(--stage-ink) 0%,
+          transparent 70%
+        );
+        opacity: 0.2;
+        -webkit-mask-image: repeating-linear-gradient(
+          0deg,
+          #000 0 1.4px,
+          transparent 1.4px 2.8px
+        );
+        mask-image: repeating-linear-gradient(
+          0deg,
+          #000 0 1.4px,
+          transparent 1.4px 2.8px
+        );
+      }
+      .card-demo .cd-title {
+        font-weight: 640;
+        font-size: 15px;
+      }
+      .card-demo .cd-label {
+        font-size: 12px;
+        color: var(--ink-soft);
+      }
+      .stage-caption {
+        position: absolute;
+        bottom: 12px;
+        left: 14px;
+        font-size: 11px;
+        color: var(--ink-faint);
+        font-style: italic;
+      }
+
+      /* ---------- RIGHT: inspector w/ tabs ---------- */
+      .inspect {
+        grid-area: inspect;
+        border-left: 1px solid var(--line);
+        background: var(--panel);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .tabs {
+        display: flex;
+        border-bottom: 1px solid var(--line);
+        padding: 0 8px;
+        gap: 2px;
+        flex: none;
+      }
+      .tabs button {
+        font: inherit;
+        font-size: 12px;
+        font-weight: 560;
+        border: 0;
+        background: transparent;
+        color: var(--ink-faint);
+        padding: 11px 12px 9px;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+      }
+      .tabs button.on {
+        color: var(--ink);
+        border-bottom-color: var(--amber);
+      }
+      .tab-body {
+        flex: 1;
+        overflow-y: auto;
+      }
+      .tab-body[hidden] {
+        display: none;
+      }
+
+      /* breadcrumb + layer header inside Look */
+      .crumb {
+        padding: 9px 14px 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        cursor: pointer;
+      }
+      .crumb b {
+        color: var(--ink-soft);
+        font-weight: 600;
+      }
+      .crumb .go {
+        margin-left: 2px;
+        color: var(--amber);
+      }
+      .insp-head {
+        padding: 6px 14px 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .insp-head .swatch {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+      }
+      .insp-head b {
+        font-size: 13px;
+        font-weight: 620;
+      }
+      .insp-head .look-tag {
+        margin-left: auto;
+        font-size: 9.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--good);
+        background: color-mix(in srgb, var(--good) 12%, transparent);
+        padding: 2px 7px;
+        border-radius: 20px;
+        font-weight: 600;
+      }
+      .swatch.sw-texture {
+        background: conic-gradient(
+          var(--amber) 0 25%,
+          transparent 0 50%,
+          var(--amber) 0 75%,
+          transparent 0
+        );
+        background-size: 6px 6px;
+      }
+      .swatch.sw-dither {
+        background: repeating-linear-gradient(
+          0deg,
+          var(--ink) 0 1.5px,
+          transparent 1.5px 3px
+        );
+      }
+      .swatch.sw-ripple {
+        background: radial-gradient(
+          circle at 50% 50%,
+          transparent 30%,
+          var(--amber) 31% 40%,
+          transparent 41%
+        );
+      }
+
+      .acc {
+        border-bottom: 1px solid var(--line-soft);
+      }
+      .acc > summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 12px;
+        user-select: none;
+      }
+      .acc > summary::-webkit-details-marker {
+        display: none;
+      }
+      .acc > summary .chev {
+        color: var(--ink-faint);
+        font-size: 10px;
+        transition: transform 0.15s;
+        margin-left: auto;
+      }
+      .acc[open] > summary .chev {
+        transform: rotate(90deg);
+      }
+      .acc > summary .grp-sub {
+        color: var(--ink-faint);
+        font-weight: 400;
+        font-size: 10.5px;
+      }
+      .acc-body {
+        padding: 2px 14px 12px;
+      }
+      .dial {
+        padding: 7px 0;
+      }
+      .dial .drow {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 5px;
+      }
+      .dial .dname {
+        font-size: 12px;
+        font-weight: 520;
+      }
+      .dial .dval {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--amber);
+        font-weight: 500;
+      }
+      .dial .key {
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--ink-faint);
+        display: block;
+        margin-top: 3px;
+        letter-spacing: -0.02em;
+      }
+      .dial .key em {
+        color: var(--amber);
+        font-style: normal;
+        opacity: 0.8;
+      }
+      .track {
+        height: 4px;
+        border-radius: 3px;
+        background: var(--panel-2);
+        position: relative;
+      }
+      .track .fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        border-radius: 3px;
+        background: var(--amber);
+      }
+      .track .knob {
+        position: absolute;
+        top: 50%;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: var(--panel);
+        border: 1.5px solid var(--amber);
+        transform: translate(-50%, -50%);
+        box-shadow: var(--shadow);
+      }
+      .chips {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        font-size: 11px;
+        padding: 4px 9px;
+        border-radius: 20px;
+        border: 1px solid var(--line);
+        background: var(--panel-2);
+        color: var(--ink-soft);
+        cursor: pointer;
+      }
+      .chip.on {
+        background: var(--amber);
+        color: #fff;
+        border-color: var(--amber);
+      }
+      .swatchrow {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .swatchrow .sc {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        cursor: pointer;
+      }
+      .swatchrow .sc.on {
+        outline: 2px solid var(--amber);
+        outline-offset: 1px;
+      }
+      .disclosure {
+        margin: 4px 14px 14px;
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .disclosure button {
+        font: inherit;
+        font-size: 11px;
+        background: none;
+        border: 0;
+        color: var(--amber);
+        cursor: pointer;
+        padding: 0;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
+      /* Setup tab */
+      .setup {
+        padding: 14px;
+      }
+      .setup .field {
+        margin-bottom: 16px;
+      }
+      .setup .field > label {
+        display: block;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--ink-faint);
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      .seg {
+        display: inline-flex;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: var(--r-sm);
+        padding: 2px;
+        width: 100%;
+      }
+      .seg button {
+        flex: 1;
+        font: inherit;
+        font-size: 12px;
+        border: 0;
+        background: transparent;
+        color: var(--ink-soft);
+        padding: 5px 8px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .seg button.on {
+        background: var(--panel);
+        color: var(--ink);
+        box-shadow: var(--shadow);
+        font-weight: 560;
+      }
+      .seg.amber button.on {
+        background: var(--amber);
+        color: #fff;
+      }
+      .setup .divide {
+        height: 1px;
+        background: var(--line-soft);
+        margin: 4px 0 16px;
+      }
+      .bake {
+        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: var(--ink);
+        color: var(--paper);
+        border: 0;
+        border-radius: var(--r-sm);
+        padding: 11px 14px;
+        font: inherit;
+        font-weight: 560;
+        font-size: 13px;
+        cursor: pointer;
+        box-shadow: var(--shadow);
+      }
+      .setup .bake-note {
+        margin: 8px 2px 0;
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        line-height: 1.5;
+      }
+      .setup .bake-note code {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--ink-soft);
+      }
+
+      /* ---------- BOTTOM: timeline (layers-as-tracks + envelope) ---------- */
+      .motion {
+        grid-area: motion;
+        border-top: 1px solid var(--line);
+        background: var(--panel-2);
+        display: grid;
+        grid-template-columns: 236px 1fr 176px;
+        overflow: hidden;
+      }
+
+      .tracks {
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      .tracks .th {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 9px 12px 7px;
+        flex: none;
+      }
+      .tracks .th h3 {
+        margin: 0;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--ink-faint);
+        font-weight: 600;
+      }
+      .tracks .th .add {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--ink-soft);
+        cursor: pointer;
+        font-size: 13px;
+        line-height: 1;
+        display: grid;
+        place-items: center;
+      }
+      .trk {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+        border-left: 2px solid transparent;
+      }
+      .trk.sel {
+        background: var(--panel);
+        border-left-color: var(--amber);
+      }
+      .trk .swatch {
+        width: 15px;
+        height: 15px;
+        border-radius: 4px;
+        flex: none;
+      }
+      .trk .tn {
+        font-weight: 540;
+        font-size: 12.5px;
+        flex: 1;
+      }
+      .trk .eye {
+        color: var(--ink-faint);
+        font-size: 11px;
+      }
+      .trk .tpill {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        color: var(--amber);
+        background: var(--amber-wash);
+        padding: 1px 6px;
+        border-radius: 20px;
+      }
+
+      .envwrap {
+        padding: 11px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        min-width: 0;
+      }
+      .envhead {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .envhead h3 {
+        margin: 0;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--ink-faint);
+        font-weight: 600;
+      }
+      .envhead .mtag {
+        font-size: 9.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--amber);
+        background: var(--amber-wash);
+        padding: 2px 7px;
+        border-radius: 20px;
+        font-weight: 600;
+      }
+      .play {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--amber);
+        color: #fff;
+        border: 0;
+        border-radius: var(--r-sm);
+        padding: 6px 13px;
+        font: inherit;
+        font-weight: 560;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .trig-row {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      .trig-row .tl {
+        font-size: 10.5px;
+        color: var(--ink-faint);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .env {
+        flex: 1;
+        position: relative;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--r-sm);
+        overflow: hidden;
+        min-height: 74px;
+      }
+      .env svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .playhead {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--amber);
+        left: 8%;
+        box-shadow: 0 0 8px var(--amber);
+        opacity: 0.9;
+      }
+      .env-axis {
+        position: absolute;
+        bottom: 3px;
+        left: 8px;
+        right: 8px;
+        display: flex;
+        justify-content: space-between;
+        font-family: var(--mono);
+        font-size: 9px;
+        color: var(--ink-faint);
+        pointer-events: none;
+      }
+
+      .timing {
+        border-left: 1px solid var(--line);
+        padding: 11px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .timing h4 {
+        margin: 0 0 2px;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--ink-faint);
+        font-weight: 600;
+      }
+      .readout {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-size: 12px;
+      }
+      .readout .rk {
+        color: var(--ink-soft);
+      }
+      .readout .rv {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink);
+        font-weight: 500;
+      }
+      .readout .rv em {
+        color: var(--amber);
+        font-style: normal;
+      }
+      .rm-note {
+        margin-top: auto;
+        font-size: 10px;
+        color: var(--ink-faint);
+        line-height: 1.5;
+        border-top: 1px solid var(--line-soft);
+        padding-top: 8px;
+      }
+      .rm-note b {
+        color: var(--good);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <!-- ===== STAGE ===== -->
+      <div class="stage">
+        <div class="stage-tools">
+          <span class="tool" title="Pan">✋</span>
+          <span class="tool" title="Zoom">⌕</span>
+          <span
+            class="tool settings"
+            id="gearBtn"
+            title="Stage settings — backdrop, grid, zoom"
+            >⚙</span
+          >
+        </div>
+        <div class="stage-meta">disc · light · 100%</div>
+        <div class="card-demo">
+          <div class="dither-shadow"></div>
+          <div style="text-align: center">
+            <div class="cd-title">Your card</div>
+            <div class="cd-label">texture · halftone</div>
+          </div>
+        </div>
+        <div class="stage-caption">
+          Hover the card to fire the selected track's trigger — or press ▶
+          Preview.
+        </div>
+      </div>
+
+      <!-- ===== RIGHT: inspector, tabbed ===== -->
+      <div class="inspect">
+        <div class="tabs">
+          <button class="on" data-tab="look">Look</button>
+          <button data-tab="setup">Setup</button>
+        </div>
+
+        <!-- LOOK -->
+        <div class="tab-body" id="tab-look">
+          <div class="crumb" id="crumbToSetup">
+            <span>editing</span><b>disc · light</b
+            ><span class="go">change ›</span>
+          </div>
+          <div class="insp-head">
+            <span class="swatch sw-texture"></span><b>Texture</b
+            ><span class="look-tag">Look</span>
+          </div>
+
+          <details class="acc" open>
+            <summary>
+              Form <span class="grp-sub">· shape &amp; pattern</span>
+              <span class="chev">›</span>
+            </summary>
+            <div class="acc-body">
+              <div class="dial">
+                <div class="drow">
+                  <span class="dname">Shape</span
+                  ><span class="dval">halftone</span>
+                </div>
+                <div class="chips">
+                  <span class="chip">bayer</span
+                  ><span class="chip on">halftone</span
+                  ><span class="chip">flow</span><span class="chip">led</span
+                  ><span class="chip">+5</span>
+                </div>
+                <span class="key">texture.disc.<em>layer.mode</em></span>
+              </div>
+              <div class="dial">
+                <div class="drow">
+                  <span class="dname">Pattern scale</span
+                  ><span class="dval">6.0px</span>
+                </div>
+                <div class="track">
+                  <div class="fill" style="width: 42%"></div>
+                  <div class="knob" style="left: 42%"></div>
+                </div>
+                <span class="key">texture.disc.<em>halftone.cellSize</em></span>
+              </div>
+            </div>
+          </details>
+
+          <details class="acc" open>
+            <summary>
+              Visibility
+              <span class="grp-sub">· density · feather · opacity</span>
+              <span class="chev">›</span>
+            </summary>
+            <div class="acc-body">
+              <div class="dial">
+                <div class="drow">
+                  <span class="dname">Density</span
+                  ><span class="dval">0.72</span>
+                </div>
+                <div class="track">
+                  <div class="fill" style="width: 72%"></div>
+                  <div class="knob" style="left: 72%"></div>
+                </div>
+                <span class="key">texture.disc.envelope.<em>reach</em></span>
+              </div>
+              <div class="dial">
+                <div class="drow">
+                  <span class="dname">Feather</span
+                  ><span class="dval">0.34</span>
+                </div>
+                <div class="track">
+                  <div class="fill" style="width: 34%"></div>
+                  <div class="knob" style="left: 34%"></div>
+                </div>
+                <span class="key"
+                  >texture.disc.envelope.<em>fadeSoftness</em></span
+                >
+              </div>
+              <div class="dial">
+                <div class="drow">
+                  <span class="dname">Opacity</span
+                  ><span class="dval">0.88</span>
+                </div>
+                <div class="track">
+                  <div class="fill" style="width: 88%"></div>
+                  <div class="knob" style="left: 88%"></div>
+                </div>
+                <span class="key">texture.disc.envelope.<em>opacity</em></span>
+              </div>
+              <div class="dial">
+                <div class="drow">
+                  <span class="dname">Inner cutout</span
+                  ><span class="dval">0.15</span>
+                </div>
+                <div class="track">
+                  <div class="fill" style="width: 15%"></div>
+                  <div class="knob" style="left: 15%"></div>
+                </div>
+                <span class="key"
+                  >texture.disc.envelope.<em>innerCutout</em></span
+                >
+              </div>
+            </div>
+          </details>
+
+          <details class="acc" open>
+            <summary>
+              Color <span class="grp-sub">· tint &amp; blend</span>
+              <span class="chev">›</span>
+            </summary>
+            <div class="acc-body">
+              <div class="dial">
+                <div class="drow">
+                  <span class="dname">Tint</span
+                  ><span class="dval">#C77B3B</span>
+                </div>
+                <div class="swatchrow">
+                  <span class="sc" style="background: #2b2620"></span
+                  ><span class="sc on" style="background: #c77b3b"></span>
+                  <span class="sc" style="background: #5c8a5a"></span
+                  ><span class="sc" style="background: #3b6ea5"></span>
+                  <span
+                    class="sc"
+                    style="
+                      background: conic-gradient(
+                        red,
+                        orange,
+                        yellow,
+                        green,
+                        blue,
+                        violet,
+                        red
+                      );
+                    "
+                  ></span>
+                </div>
+                <span class="key">texture.disc.envelope.<em>tint</em></span>
+              </div>
+              <div class="dial">
+                <div class="drow">
+                  <span class="dname">Blend mode</span
+                  ><span class="dval">screen</span>
+                </div>
+                <div class="chips">
+                  <span class="chip on">screen</span
+                  ><span class="chip">normal</span>
+                </div>
+                <span class="key"
+                  >texture.disc.envelope.<em>screenBlend</em></span
+                >
+              </div>
+            </div>
+          </details>
+
+          <div class="disclosure">
+            <span>4 more mode params hidden ·</span
+            ><button>show halftone advanced</button>
+          </div>
+        </div>
+
+        <!-- SETUP (was the top bar) -->
+        <div class="tab-body" id="tab-setup" hidden>
+          <div class="setup">
+            <div class="field">
+              <label>Surface</label>
+              <div class="seg">
+                <button class="on">Disc</button><button>Sheet</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Theme</label>
+              <div class="seg amber">
+                <button class="on">Light</button><button>Dark</button>
+              </div>
+            </div>
+            <div class="field">
+              <label>Backdrop</label>
+              <div class="seg">
+                <button class="on">Paper</button><button>Ink</button
+                ><button>Grid</button>
+              </div>
+            </div>
+            <div class="divide"></div>
+            <button class="bake">Bake to site →</button>
+            <p class="bake-note">
+              Writes the tuned values back through the schema store. Target
+              auto-detected: <code>disc</code> on <code>Card.tsx</code>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== BOTTOM: timeline (tracks + envelope + timing) ===== -->
+      <div class="motion">
+        <div class="tracks">
+          <div class="th">
+            <h3>Layers</h3>
+            <button class="add">+</button>
+          </div>
+          <div class="trk sel">
+            <span class="swatch sw-texture"></span
+            ><span class="tn">Texture</span><span class="tpill">arrival</span
+            ><span class="eye">◉</span>
+          </div>
+          <div class="trk">
+            <span class="swatch sw-dither"></span
+            ><span class="tn">Dither shadow</span
+            ><span class="tpill">hover</span><span class="eye">◉</span>
+          </div>
+          <div class="trk">
+            <span class="swatch sw-ripple"></span><span class="tn">Ripple</span
+            ><span class="tpill">pointer</span><span class="eye">◉</span>
+          </div>
+        </div>
+
+        <div class="envwrap">
+          <div class="envhead">
+            <h3>Motion — Texture</h3>
+            <span class="mtag">Behavior · reduced-motion aware</span>
+            <button class="play" id="playBtn">▶ Preview</button>
+          </div>
+          <div class="trig-row">
+            <span class="tl">Trigger</span>
+            <div class="seg amber" style="width: auto">
+              <button>Hover</button><button>Pointer</button
+              ><button class="on">Arrival</button><button>Click</button>
+            </div>
+          </div>
+          <div class="env" id="env">
+            <svg viewBox="0 0 400 100" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0"
+                    stop-color="var(--amber)"
+                    stop-opacity=".28"
+                  />
+                  <stop offset="1" stop-color="var(--amber)" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M0,95 C40,95 30,12 90,12 L150,12 C230,12 250,88 400,90 L400,100 L0,100 Z"
+                fill="url(#g)"
+              />
+              <path
+                d="M0,95 C40,95 30,12 90,12 L150,12 C230,12 250,88 400,90"
+                fill="none"
+                stroke="var(--amber)"
+                stroke-width="2"
+              />
+              <circle
+                cx="90"
+                cy="12"
+                r="4"
+                fill="var(--panel)"
+                stroke="var(--amber)"
+                stroke-width="2"
+              />
+              <circle
+                cx="150"
+                cy="12"
+                r="4"
+                fill="var(--panel)"
+                stroke="var(--amber)"
+                stroke-width="2"
+              />
+            </svg>
+            <div class="playhead" id="playhead"></div>
+            <div class="env-axis">
+              <span>attack</span><span>hold</span><span>decay</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="timing">
+          <h4>Timing</h4>
+          <div class="readout">
+            <span class="rk">Attack</span><span class="rv"><em>120</em>ms</span>
+          </div>
+          <div class="readout">
+            <span class="rk">Hold</span><span class="rv"><em>80</em>ms</span>
+          </div>
+          <div class="readout">
+            <span class="rk">Decay</span><span class="rv"><em>380</em>ms</span>
+          </div>
+          <div class="readout">
+            <span class="rk">Curve</span><span class="rv">spring</span>
+          </div>
+          <div class="rm-note">
+            <b>Reduced-motion safe.</b> Look params stay; this panel collapses
+            to the resting state when the OS asks for less motion.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Tabs
+      const tabBtns = document.querySelectorAll(".tabs button");
+      function showTab(name) {
+        tabBtns.forEach((b) =>
+          b.classList.toggle("on", b.dataset.tab === name),
+        );
+        document.getElementById("tab-look").hidden = name !== "look";
+        document.getElementById("tab-setup").hidden = name !== "setup";
+      }
+      tabBtns.forEach((b) =>
+        b.addEventListener("click", () => showTab(b.dataset.tab)),
+      );
+      document
+        .getElementById("crumbToSetup")
+        .addEventListener("click", () => showTab("setup"));
+      document
+        .getElementById("gearBtn")
+        .addEventListener("click", () => showTab("setup"));
+
+      // Track selection
+      document.querySelectorAll(".trk").forEach((t) =>
+        t.addEventListener("click", () => {
+          document
+            .querySelectorAll(".trk")
+            .forEach((x) => x.classList.remove("sel"));
+          t.classList.add("sel");
+        }),
+      );
+
+      // Preview playhead sweep
+      const btn = document.getElementById("playBtn"),
+        ph = document.getElementById("playhead");
+      let raf = null;
+      btn.addEventListener("click", () => {
+        if (raf) cancelAnimationFrame(raf);
+        const start = performance.now(),
+          dur = 1400;
+        (function step(t) {
+          const p = Math.min(1, (t - start) / dur);
+          ph.style.left = 8 + p * 88 + "%";
+          if (p < 1) raf = requestAnimationFrame(step);
+          else ph.style.left = "8%";
+        })(start);
+      });
+
+      // Segmented toggles
+      document.querySelectorAll(".seg").forEach((seg) =>
+        seg.addEventListener("click", (e) => {
+          if (e.target.tagName === "BUTTON") {
+            seg
+              .querySelectorAll("button")
+              .forEach((b) => b.classList.remove("on"));
+            e.target.classList.add("on");
+          }
+        }),
+      );
+    </script>
+  </body>
+</html>
