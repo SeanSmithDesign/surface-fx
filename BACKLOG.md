@@ -22,10 +22,10 @@ Commit `0ef851f` ("feat(tuner): D2 Look tab — full texture param depth (wave 2
 - **Dependency:** the stage only *draws* the texture effect today. Wiring bloom/ripple sets real values but won't visibly change the stage until it also renders those effects. Needs stage-render work first, not just control wiring.
 
 ## Open design decisions (surfaced by the live build)
-1. **Tint** is an enum (`ink`/`accent`/`custom`), not a color picker. Keep, or add a real picker?
-2. **"Theme" label** — the toggle picks which effect *variant* (@light/@dark) you're tuning, not app appearance. Rename to "Variant"?
-3. **Sample picker** — one-click disc/sheet/halftone is gone (halftone via Shape dial now). Miss it?
-4. **Timeline density** — does the 3-track + trigger + envelope + timing bottom bar hold up live, or does it want collapse-when-unselected?
+1. ~~**Tint** is an enum (`ink`/`accent`/`custom`), not a color picker.~~ **DECIDED (2026-07-21): keep the enum.** Maps to real design tokens; a free picker invites off-brand values with no upside for a tuner.
+2. ~~**"Theme" label**~~ **DECIDED (2026-07-21): rename to "Variant".** Shipped — commit `40d3ca2`, verified live on the Setup tab.
+3. ~~**Sample picker** — one-click disc/sheet/halftone is gone.~~ **DECIDED (2026-07-21): skip re-adding.** Halftone is reachable via the Shape dial; a dedicated picker would duplicate an existing control.
+4. **Timeline density** — does the 3-track + trigger + envelope + timing bottom bar hold up live, or does it want collapse-when-unselected? **Still open** — screenshots captured 2026-07-21 (`timeline-density-full.png`, `timeline-density-viewport.png` at repo root) for Sean to react to live.
 
 ## Parked (from earlier port work)
 - Merge `feat/stage-playground` → surface-fx `main` — HELD. main is the site's floating `github:` dep, so this is prod-adjacent. Gated on Sean.
