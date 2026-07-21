@@ -8,12 +8,13 @@
 
 **Key fact (measured 2026-07-20):** the extraction dropped NOTHING. All ~251 params from the original seansmithdesign.com dev panels live in the store (`src/schema/{texture,bloom,feedHover}*.ts` — 168 / 66 / 17). Wave 1 rendered only ~8. The gap Sean felt is 100% un-rendered, not lost.
 
-### NEXT — Wave 2: Texture track to full parity with original TextureConsolePanel
-- All 8 envelope controls (reach, fadeOrigin, fadeSoftness, innerCutout, opacity, screenBlend, tint, mobileScale) — not just 4.
-- The **active mode's complete param set**, auto-swapping when Shape changes (LED→cellSize/gap/glow/colorMix; Rings→ringSpacing/dotScale/centerFalloff/contrast; etc. across all 9 modes).
-- Both surfaces (disc/sheet via Setup) and both themes (@light/@dark), already keyed.
-- Nuance affordances the original had: numeric entry, per-dial reset, copy/export of the diff.
-- Renders live on the stage (texture is what the stage draws today).
+### DONE — Wave 2: Texture track to full parity with original TextureConsolePanel
+Commit `0ef851f` ("feat(tuner): D2 Look tab — full texture param depth (wave 2)"), verified live via Playwright against `http://localhost:4041/?stage=1&target=disc`.
+- [x] All 8 envelope controls (reach, fadeOrigin, fadeSoftness, innerCutout, opacity, screenBlend, tint, mobileScale) — not just 4.
+- [x] The **active mode's complete param set**, auto-swapping when Shape changes (LED→cellSize/gap/glow/colorMix; Rings→ringSpacing/dotScale/centerFalloff/contrast; etc. across all 9 modes).
+- [x] Both surfaces (disc/sheet via Setup) and both themes (@light/@dark), already keyed. Also fixed a real bug found along the way: keys were hardcoded to `texture.disc.` regardless of the Surface toggle — Sheet now retargets every key correctly.
+- [x] Nuance affordances the original had: numeric entry (with clamping), per-dial reset, copy/export of the diff (new "Changes" accordion, live count + list, e.g. `texture.sheet.led.cellSize@light = 40 (default 9)`).
+- [x] Renders live on the stage (texture is what the stage draws today).
 
 ### Wave 3 (parked) — Dither-shadow + Ripple tracks
 - Dither shadow track → bloom registry (66 params, 7 groups: springs, timing, dither geometry, shadow morph, pointer lift).
