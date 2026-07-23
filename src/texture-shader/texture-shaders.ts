@@ -12,6 +12,11 @@
  *   7 = scanlines   — horizontal sin modulation with optional roll (u_time)
  *   8 = crosshatch  — luminance → layered angled hatch line sets
  *   9 = lego        — chunky block grid with circular stud + bevel lighting
+ *  10 = phyllotaxis — Vogel/golden-angle spiral of dots (sunflower seed head)
+ *  11 = julia       — Julia-set orbit-trap field, posterized into tone bands
+ *  12 = lightning   — branching electric filaments radiating from center
+ *  13 = web         — spider web: radial spokes + sagging concentric threads
+ *  14 = coral       — domain-warped Worley noise, dendritic organic growth
  *
  * Uniforms (all modes):
  *   u_resolution   vec2   canvas size in device px (already DPR-scaled)
@@ -104,6 +109,42 @@
  *   u_p0 = studSize  (block cell size in CSS px, default 18)
  *   u_p1 = bevel     (bevel strength 0..0.4, default 0.2)
  *   u_p2 = gap       (inter-block gap as fraction 0..0.45, default 0.1)
+ *
+ * Phyllotaxis (mode 10) params:
+ *   u_p0 = spacing   (spiral point spacing in CSS px, default 14)
+ *   u_p1 = dotScale  (dot radius as fraction of spacing, default 0.35)
+ *   u_p2 = rotate    (extra spiral rotation in radians, default 0)
+ *   u_p3 = jitter    (per-dot position jitter, fraction of spacing, default 0.15)
+ *   u_p4 = contrast  (luminance contrast multiplier, default 1.6)
+ *
+ * Julia (mode 11) params:
+ *   u_p0 = cRe       (Julia constant, real part, default -0.4)
+ *   u_p1 = cIm       (Julia constant, imaginary part, default 0.6)
+ *   u_p2 = zoom      (view zoom, default 1.0)
+ *   u_p3 = levels    (posterize levels 2..3, default 3)
+ *   u_p4 = trapMix   (blend between escape-time and orbit-trap fields, default 0.5)
+ *   u_p5 = contrast  (luminance contrast multiplier, default 1.6)
+ *
+ * Lightning (mode 12) params — ANIMATED (uses u_time when flickerSpeed > 0):
+ *   u_p0 = density      (noise spatial frequency, default 3.0)
+ *   u_p1 = warp         (domain warp strength, default 0.6)
+ *   u_p2 = thickness    (filament width 0.02..0.3, default 0.08)
+ *   u_p3 = flickerSpeed (animation rate, 0 = static, default 0.15)
+ *   u_p4 = contrast     (luminance contrast multiplier, default 1.8)
+ *
+ * Web (mode 13) params:
+ *   u_p0 = spokes      (radial spoke count, default 10)
+ *   u_p1 = ringSpacing (spacing between concentric rings in CSS px, default 18)
+ *   u_p2 = sag         (ring sag between spokes 0..0.5, default 0.15)
+ *   u_p3 = jitter      (per-thread position jitter 0..1, default 0.2)
+ *   u_p4 = threadWidth (thread half-width in CSS px, default 1.5)
+ *
+ * Coral (mode 14) params:
+ *   u_p0 = scale     (spatial frequency, default 2.5)
+ *   u_p1 = warp      (domain warp strength, default 0.5)
+ *   u_p2 = threshold (base growth threshold 0..1, default 0.15)
+ *   u_p3 = detail    (fine-cell detail mix 0..1, default 0.5)
+ *   u_p4 = contrast  (luminance contrast multiplier, default 1.8)
  */
 
 /** Standard fullscreen-triangle vertex shader. */
@@ -561,6 +602,237 @@ vec4 modeLego(vec2 fragCoord) {
   return vec4(u_color0 * alpha, alpha);
 }
 
+// -- Mode 10: Phyllotaxis -----------------------------------------------------
+//
+// Vogel/golden-angle spiral of dots ("sunflower seed head"). Inverts the
+// spiral formula r(n) = spacing*sqrt(n) to estimate the nearest index for a
+// given radius, then searches a small fixed window of neighboring indices to
+// find the true nearest spiral point. Dot radius scales with bloomLum, so
+// the spiral fills in near u_center and thins out toward the edge.
+
+vec4 modePhyllotaxis(vec2 fragCoord) {
+  float spacing  = max(u_p0, 2.0);
+  float dotScale = clamp(u_p1, 0.05, 1.0);
+  float rotate   = u_p2;
+  float jitter   = clamp(u_p3, 0.0, 1.0);
+  float contrast = clamp(u_p4, 0.5, 3.0);
+
+  const float GOLDEN_ANGLE = 2.399963;
+
+  vec2  centered = fragCoord - u_center * u_resolution;
+  float r        = length(centered);
+
+  float nEst = r / spacing;
+  nEst = nEst * nEst;
+
+  float bestDist = 1e6;
+
+  for (int i = -4; i <= 4; i++) {
+    float n  = max(nEst + float(i), 0.0);
+    float pr = spacing * sqrt(n);
+    float pa = n * GOLDEN_ANGLE + rotate;
+    vec2  pt = vec2(cos(pa), sin(pa)) * pr;
+
+    vec2 jOff = (vec2(hash21(vec2(n, 1.0)), hash21(vec2(n, 2.0))) - 0.5)
+      * jitter * spacing;
+    pt += jOff;
+
+    bestDist = min(bestDist, length(centered - pt));
+  }
+
+  float lum      = bloomLum(fragCoord, contrast);
+  float dotR     = dotScale * spacing * 0.5 * lum;
+  float feather  = max(spacing * 0.04, 0.75);
+  float dot_     = 1.0 - smoothstep(dotR - feather, dotR + feather, bestDist);
+
+  float alpha = clamp(dot_ * u_opacity, 0.0, 1.0);
+  return vec4(u_color0 * alpha, alpha);
+}
+
+// -- Mode 11: Julia set orbit-trap field --------------------------------------
+//
+// Escape-time Julia iteration (z = z^2 + c) with a modest iteration count,
+// blended against an orbit-trap (min |z|^2 seen during iteration) field and
+// posterized into 2-3 tone levels so it reads as abstract texture rather
+// than a fractal poster. Modulated by bloomLum like the other modes.
+
+vec4 modeJulia(vec2 fragCoord) {
+  float cRe     = u_p0;
+  float cIm     = u_p1;
+  float zoom    = max(u_p2, 0.1);
+  float levels  = clamp(u_p3, 2.0, 3.0);
+  float trapMix = clamp(u_p4, 0.0, 1.0);
+  float contrast = clamp(u_p5, 0.5, 3.0);
+
+  float viewScale = min(u_resolution.x, u_resolution.y) * 0.15;
+  vec2  uv = (fragCoord - u_center * u_resolution) / (viewScale * zoom);
+
+  vec2 z = uv;
+  vec2 c = vec2(cRe, cIm);
+  float trap = 1e6;
+  int   iter = 0;
+
+  const int MAX_ITER = 48;
+  for (int i = 0; i < MAX_ITER; i++) {
+    if (dot(z, z) > 4.0) break;
+    z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+    trap = min(trap, dot(z, z));
+    iter++;
+  }
+
+  float escapeVal = float(iter) / float(MAX_ITER);
+  float trapVal   = clamp(1.0 - sqrt(trap) * 0.7, 0.0, 1.0);
+  float val       = mix(escapeVal, trapVal, trapMix);
+
+  float lum = bloomLum(fragCoord, contrast);
+  val *= lum;
+
+  float q     = floor(val * levels) / max(levels - 1.0, 1.0);
+  float alpha = clamp(q * u_opacity, 0.0, 1.0);
+  return vec4(u_color0 * alpha, alpha);
+}
+
+// -- Mode 12: Lightning -------------------------------------------------------
+//
+// Ridged fbm (1 - |2*noise-1|) sharpened into thin bright threads, with a
+// domain warp so filaments branch instead of running parallel. Sampled in a
+// polar-ish domain (angle x radius) so filaments radiate outward from
+// u_center. u_time drives a subtle flicker; at flickerSpeed=0 this is an
+// exact static frame.
+
+float lightningRidge(vec2 p) {
+  return 1.0 - abs(vnoise(p) * 2.0 - 1.0);
+}
+
+float lightningRidgedFbm(vec2 p) {
+  float v    = 0.0;
+  float amp  = 0.5;
+  float freq = 1.0;
+  for (int i = 0; i < 3; i++) {
+    v    += amp * lightningRidge(p * freq);
+    amp  *= 0.5;
+    freq *= 2.2;
+  }
+  return v;
+}
+
+vec4 modeLightning(vec2 fragCoord) {
+  float density      = max(u_p0, 0.5);
+  float warp         = clamp(u_p1, 0.0, 2.0);
+  float thickness    = clamp(u_p2, 0.02, 0.3);
+  float flickerSpeed = max(u_p3, 0.0);
+  float contrast     = clamp(u_p4, 0.5, 4.0);
+
+  vec2  centered = fragCoord - u_center * u_resolution;
+  float r        = length(centered);
+  float ang      = atan(centered.y, centered.x);
+  float t        = u_time * flickerSpeed;
+
+  vec2 p = vec2(ang * 2.0, r * 0.02) * density;
+
+  vec2 warpOffset = vec2(
+    fbm(p * 0.5 + t * 0.1),
+    fbm(p * 0.5 + vec2(5.2, 1.3) + t * 0.1)
+  );
+  p += warp * (warpOffset - 0.5) * 2.0;
+
+  float bolt = lightningRidgedFbm(p);
+  bolt = pow(clamp(bolt, 0.0, 1.0), 1.0 / max(thickness * 10.0, 0.5));
+
+  float lum   = bloomLum(fragCoord, contrast);
+  float alpha = clamp(bolt * lum * u_opacity, 0.0, 1.0);
+  return vec4(u_color0 * alpha, alpha);
+}
+
+// -- Mode 13: Web --------------------------------------------------------------
+//
+// Spider web in polar coordinates: N radial spokes plus concentric threads
+// that sag between spokes (ring radius offset by a cosine of the sector
+// angle) with per-thread hash jitter. Thin anti-aliased lines via
+// smoothstep on distance.
+
+vec4 modeWeb(vec2 fragCoord) {
+  float spokes      = max(floor(u_p0), 3.0);
+  float ringSpacing = max(u_p1, 4.0);
+  float sag         = clamp(u_p2, 0.0, 0.5);
+  float jitter      = clamp(u_p3, 0.0, 1.0);
+  float threadWidth = clamp(u_p4, 0.5, 4.0);
+
+  vec2  centered = fragCoord - u_center * u_resolution;
+  float r        = length(centered);
+  float ang      = atan(centered.y, centered.x);
+
+  float sector     = (ang / 6.28318) * spokes;
+  float sectorFrac = fract(sector) - 0.5;
+  float distToSpoke = abs(sectorFrac) * (6.28318 * max(r, 1.0) / spokes);
+  float spokeLine  = 1.0 - smoothstep(threadWidth * 0.5, threadWidth * 0.5 + 1.5, distToSpoke);
+
+  float sectorAngle  = (floor(sector) + 0.5) * (6.28318 / spokes);
+  float sagOffset    = sag * ringSpacing * cos((ang - sectorAngle) * spokes);
+  float jitterOffset = (hash21(vec2(floor(r / ringSpacing), floor(sector))) - 0.5)
+    * jitter * ringSpacing * 0.3;
+
+  float ringR      = r - sagOffset - jitterOffset;
+  float ringMod    = mod(ringR, ringSpacing);
+  float distToRing = min(ringMod, ringSpacing - ringMod);
+  float ringLine   = 1.0 - smoothstep(threadWidth * 0.5, threadWidth * 0.5 + 1.5, distToRing);
+
+  float web = max(spokeLine, ringLine);
+  float lum = bloomLum(fragCoord, 1.4);
+
+  float alpha = clamp(web * lum * u_opacity, 0.0, 1.0);
+  return vec4(u_color0 * alpha, alpha);
+}
+
+// -- Mode 14: Coral ------------------------------------------------------------
+//
+// Domain-warped Worley (cellular) noise thresholded so bloomLum controls how
+// far the growth has "spread" from center — dense organic mass near center,
+// dissolving into scattered fragments at the edge. worleyF1 returns distance
+// to the nearest feature point in a 3x3 neighborhood search.
+
+float worleyF1(vec2 p) {
+  vec2  i = floor(p);
+  vec2  f = fract(p);
+  float minDist = 8.0;
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      vec2 neighbor = vec2(float(x), float(y));
+      vec2 point = vec2(
+        hash21(i + neighbor),
+        hash21(i + neighbor + vec2(37.1, 91.7))
+      );
+      vec2 diff = neighbor + point - f;
+      minDist = min(minDist, length(diff));
+    }
+  }
+  return minDist;
+}
+
+vec4 modeCoral(vec2 fragCoord) {
+  float scale     = max(u_p0, 0.5);
+  float warp      = clamp(u_p1, 0.0, 2.0);
+  float threshold = clamp(u_p2, 0.0, 1.0);
+  float detail    = clamp(u_p3, 0.0, 1.0);
+  float contrast  = clamp(u_p4, 0.5, 4.0);
+
+  vec2 uv = fragCoord / u_resolution * scale;
+
+  vec2 warpOffset = vec2(fbm(uv * 1.5), fbm(uv * 1.5 + vec2(4.2, 2.1)));
+  vec2 warped = uv + warp * (warpOffset - 0.5) * 2.0;
+
+  float cellCoarse = worleyF1(warped * (4.0 + detail * 8.0));
+  float cellFine   = worleyF1(warped * (12.0 + detail * 16.0));
+  float pattern    = mix(cellCoarse, cellFine, 0.35);
+
+  float lum    = bloomLum(fragCoord, contrast);
+  float spread = threshold + lum * (1.0 - threshold);
+
+  float mass  = 1.0 - smoothstep(spread - 0.08, spread, pattern);
+  float alpha = clamp(mass * lum * u_opacity, 0.0, 1.0);
+  return vec4(u_color0 * alpha, alpha);
+}
+
 // -- Main --------------------------------------------------------------------
 
 void main() {
@@ -584,6 +856,16 @@ void main() {
     outColor = modeCrosshatch(fragCoord);
   } else if (u_mode == 9) {
     outColor = modeLego(fragCoord);
+  } else if (u_mode == 10) {
+    outColor = modePhyllotaxis(fragCoord);
+  } else if (u_mode == 11) {
+    outColor = modeJulia(fragCoord);
+  } else if (u_mode == 12) {
+    outColor = modeLightning(fragCoord);
+  } else if (u_mode == 13) {
+    outColor = modeWeb(fragCoord);
+  } else if (u_mode == 14) {
+    outColor = modeCoral(fragCoord);
   } else {
     // Mode 0 (css): fully transparent. WebGL canvas is a no-op.
     outColor = vec4(0.0);

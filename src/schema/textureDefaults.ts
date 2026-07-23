@@ -20,7 +20,12 @@ export type TextureMode =
   | "bluenoise"
   | "scanlines"
   | "crosshatch"
-  | "lego";
+  | "lego"
+  | "phyllotaxis"
+  | "julia"
+  | "lightning"
+  | "web"
+  | "coral";
 
 /** Which surface the tuning panel is currently editing. */
 export type TextureSurface = "disc" | "sheet";
@@ -128,6 +133,78 @@ export interface LegoParams {
   gap: number;
 }
 
+/** Phyllotaxis / Vogel-spiral dot params (mode 10). */
+export interface PhyllotaxisParams {
+  /** Spacing between successive spiral points in CSS px. */
+  spacing: number;
+  /** Dot radius as a fraction of spacing, 0.05..1. */
+  dotScale: number;
+  /** Extra spiral rotation in radians. */
+  rotate: number;
+  /** Per-dot position jitter, fraction of spacing, 0..1. */
+  jitter: number;
+  /** Luminance contrast multiplier. */
+  contrast: number;
+}
+
+/** Julia-set orbit-trap params (mode 11). */
+export interface JuliaParams {
+  /** Julia constant, real part. */
+  cRe: number;
+  /** Julia constant, imaginary part. */
+  cIm: number;
+  /** View zoom. */
+  zoom: number;
+  /** Posterize levels, 2..3. */
+  levels: number;
+  /** Blend between escape-time and orbit-trap fields, 0..1. */
+  trapMix: number;
+  /** Luminance contrast multiplier. */
+  contrast: number;
+}
+
+/** Lightning filament params (mode 12) — ANIMATED via u_time when flickerSpeed > 0. */
+export interface LightningParams {
+  /** Noise spatial frequency. */
+  density: number;
+  /** Domain warp strength, 0..2. */
+  warp: number;
+  /** Filament width, 0.02..0.3. */
+  thickness: number;
+  /** Animation rate (0 = static). */
+  flickerSpeed: number;
+  /** Luminance contrast multiplier. */
+  contrast: number;
+}
+
+/** Spider web params (mode 13). */
+export interface WebParams {
+  /** Radial spoke count. */
+  spokes: number;
+  /** Spacing between concentric rings in CSS px. */
+  ringSpacing: number;
+  /** Ring sag between spokes, 0..0.5. */
+  sag: number;
+  /** Per-thread position jitter, 0..1. */
+  jitter: number;
+  /** Thread half-width in CSS px. */
+  threadWidth: number;
+}
+
+/** Coral / dendritic growth params (mode 14). */
+export interface CoralParams {
+  /** Spatial frequency. */
+  scale: number;
+  /** Domain warp strength, 0..2. */
+  warp: number;
+  /** Base growth threshold, 0..1. */
+  threshold: number;
+  /** Fine-cell detail mix, 0..1. */
+  detail: number;
+  /** Luminance contrast multiplier. */
+  contrast: number;
+}
+
 /** Union of all per-mode param bags. */
 export type TextureModeParams =
   | LEDParams
@@ -139,6 +216,11 @@ export type TextureModeParams =
   | ScanlinesParams
   | CrosshatchParams
   | LegoParams
+  | PhyllotaxisParams
+  | JuliaParams
+  | LightningParams
+  | WebParams
+  | CoralParams
   | object;
 
 /**
@@ -231,6 +313,16 @@ export interface SurfaceConfig {
   crosshatch: CrosshatchParams;
   /** Params for Lego block-grid mode. */
   lego: LegoParams;
+  /** Params for phyllotaxis spiral mode. */
+  phyllotaxis: PhyllotaxisParams;
+  /** Params for Julia-set orbit-trap mode. */
+  julia: JuliaParams;
+  /** Params for lightning filament mode. */
+  lightning: LightningParams;
+  /** Params for spider web mode. */
+  web: WebParams;
+  /** Params for coral / dendritic growth mode. */
+  coral: CoralParams;
 }
 
 /** A pair of SurfaceConfigs, one per document theme. */
@@ -331,6 +423,42 @@ const DEFAULT_MODE_PARAMS = {
     studSize: 18,
     bevel: 0.2,
     gap: 0.1,
+  },
+  phyllotaxis: {
+    spacing: 14,
+    dotScale: 0.35,
+    rotate: 0,
+    jitter: 0.15,
+    contrast: 1.6,
+  },
+  julia: {
+    cRe: -0.4,
+    cIm: 0.6,
+    zoom: 1.0,
+    levels: 3,
+    trapMix: 0.5,
+    contrast: 1.6,
+  },
+  lightning: {
+    density: 3.0,
+    warp: 0.6,
+    thickness: 0.08,
+    flickerSpeed: 0.15,
+    contrast: 1.8,
+  },
+  web: {
+    spokes: 10,
+    ringSpacing: 18,
+    sag: 0.15,
+    jitter: 0.2,
+    threadWidth: 1.5,
+  },
+  coral: {
+    scale: 2.5,
+    warp: 0.5,
+    threshold: 0.15,
+    detail: 0.5,
+    contrast: 1.8,
   },
 } as const;
 

@@ -282,6 +282,11 @@ const MODE_TO_INT: Record<string, number> = {
   scanlines: 7,
   crosshatch: 8,
   lego: 9,
+  phyllotaxis: 10,
+  julia: 11,
+  lightning: 12,
+  web: 13,
+  coral: 14,
 };
 
 function modeParamFloats(
