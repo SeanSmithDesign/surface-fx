@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Agent-forward dither/ripple/pointer surface-effect library for React. Pure-logic foundation, zero coupling to any design system.",
+  "license": "MIT",
   "exports": {
     ".": "./src/index.ts",
     "./*": "./src/*.ts"
@@ -11,7 +12,8 @@
   "types": "./src/index.ts",
   "files": [
     "src",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "peerDependencies": {
     "react": ">=19",
